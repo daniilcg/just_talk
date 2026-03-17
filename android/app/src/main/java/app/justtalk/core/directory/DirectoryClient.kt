@@ -1,0 +1,160 @@
+package app.justtalk.core.directory
+
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
+
+sealed interface DirectoryEvent {
+    data class SignupOk(val uid: String, val nickname: String, val email: String?) : DirectoryEvent
+    data class LoginOk(val uid: String, val nickname: String, val email: String?) : DirectoryEvent
+    data class LookupUidResult(val uid: String, val nickname: String?, val onlinePeerId: String?) : DirectoryEvent
+    data class LookupNicknameResult(val nickname: String, val uid: String?, val onlinePeerId: String?) : DirectoryEvent
+    data class Invite(val fromPeerId: String, val roomId: String) : DirectoryEvent
+    data class InviteResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
+    data class Error(val code: String, val details: String? = null) : DirectoryEvent
+    data object Closed : DirectoryEvent
+}
+
+class DirectoryClient(
+    private val url: String
+) {
+    private val okHttp = OkHttpClient.Builder()
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .build()
+
+    private var ws: WebSocket? = null
+
+    private val _events = MutableSharedFlow<DirectoryEvent>(
+        replay = 0,
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val events: SharedFlow<DirectoryEvent> = _events
+
+    fun connect() {
+        val request = Request.Builder().url(url).build()
+        ws = okHttp.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) = Unit
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                val obj = runCatching { JSONObject(text) }.getOrNull()
+                if (obj == null) {
+                    _events.tryEmit(DirectoryEvent.Error("bad_json"))
+                    return
+                }
+                when (obj.optString("type")) {
+                    "signup_ok" -> _events.tryEmit(
+                        DirectoryEvent.SignupOk(
+                            uid = obj.optString("uid"),
+                            nickname = obj.optString("nickname"),
+                            email = if (obj.isNull("email")) null else obj.optString("email")
+                        )
+                    )
+                    "login_ok" -> _events.tryEmit(
+                        DirectoryEvent.LoginOk(
+                            uid = obj.optString("uid"),
+                            nickname = obj.optString("nickname"),
+                            email = if (obj.isNull("email")) null else obj.optString("email")
+                        )
+                    )
+                    "lookup_uid_result" -> _events.tryEmit(
+                        DirectoryEvent.LookupUidResult(
+                            uid = obj.optString("uid"),
+                            nickname = if (obj.isNull("nickname")) null else obj.optString("nickname"),
+                            onlinePeerId = if (obj.isNull("onlinePeerId")) null else obj.optString("onlinePeerId")
+                        )
+                    )
+                    "lookup_nickname_result" -> _events.tryEmit(
+                        DirectoryEvent.LookupNicknameResult(
+                            nickname = obj.optString("nickname"),
+                            uid = if (obj.isNull("uid")) null else obj.optString("uid"),
+                            onlinePeerId = if (obj.isNull("onlinePeerId")) null else obj.optString("onlinePeerId")
+                        )
+                    )
+                    "invite" -> _events.tryEmit(
+                        DirectoryEvent.Invite(
+                            fromPeerId = obj.optString("from"),
+                            roomId = obj.optString("room")
+                        )
+                    )
+                    "invite_result" -> _events.tryEmit(
+                        DirectoryEvent.InviteResult(
+                            ok = obj.optBoolean("ok", false),
+                            reason = obj.optString("reason", null)
+                        )
+                    )
+                    "error" -> _events.tryEmit(
+                        DirectoryEvent.Error(
+                            code = obj.optString("code", "error"),
+                            details = obj.optString("details", null)
+                        )
+                    )
+                    else -> Unit
+                }
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                _events.tryEmit(DirectoryEvent.Closed)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                _events.tryEmit(DirectoryEvent.Error("ws_failure", t.message))
+            }
+        })
+    }
+
+    fun signup(nickname: String, email: String?, peerId: String, password: String) {
+        val obj = JSONObject()
+            .put("type", "signup")
+            .put("nickname", nickname.trim())
+            .put("email", email?.trim() ?: JSONObject.NULL)
+            .put("password", password)
+            .put("peerId", peerId)
+        ws?.send(obj.toString())
+    }
+
+    fun login(uid: String, password: String, peerId: String) {
+        val obj = JSONObject()
+            .put("type", "login")
+            .put("uid", uid.trim())
+            .put("password", password)
+            .put("peerId", peerId)
+        ws?.send(obj.toString())
+    }
+
+    fun lookupUid(uid: String) {
+        val obj = JSONObject()
+            .put("type", "lookup_uid")
+            .put("uid", uid.trim())
+        ws?.send(obj.toString())
+    }
+
+    fun lookupNickname(nickname: String) {
+        val obj = JSONObject()
+            .put("type", "lookup_nickname")
+            .put("nickname", nickname.trim())
+        ws?.send(obj.toString())
+    }
+
+    fun inviteUid(fromPeerId: String, toUid: String, roomId: String) {
+        val obj = JSONObject()
+            .put("type", "invite_uid")
+            .put("from", fromPeerId)
+            .put("toUid", toUid.trim())
+            .put("room", roomId)
+        ws?.send(obj.toString())
+    }
+
+    fun close() {
+        ws?.close(1000, "bye")
+        ws = null
+    }
+}
+
