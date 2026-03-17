@@ -40,8 +40,9 @@ function padUid(n) {
 function normalizeHandle(input) {
   const raw = String(input ?? "").trim();
   const lower = raw.toLowerCase();
-  // Allow: a-z 0-9 _ . -
-  const ok = /^[a-z0-9_.-]{3,20}$/.test(lower);
+  // Allow: latin a-z, digits 0-9, plus _ . -
+  // Length: 3..24
+  const ok = /^[a-z0-9_.-]{3,24}$/.test(lower);
   return ok ? lower : null;
 }
 
