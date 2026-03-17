@@ -16,6 +16,7 @@ import app.justtalk.data.ProfileStore
 import app.justtalk.ui.screens.AuthScreen
 import app.justtalk.ui.screens.CallScreen
 import app.justtalk.ui.screens.HomeScreen
+import app.justtalk.ui.screens.SettingsScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -44,15 +45,20 @@ fun JustTalkApp(initialRoomId: String?) {
         NavHost(navController = nav, startDestination = startDestination) {
             composable("auth") {
                 AuthScreen(
-                    onDone = { nav.navigate("home") { popUpTo("auth") { inclusive = true } } }
+                    onDone = { nav.navigate("home") { popUpTo("auth") { inclusive = true } } },
+                    onOpenSettings = { nav.navigate("settings") }
                 )
             }
             composable("home") {
                 HomeScreen(
                     onStartCall = { roomId ->
                         nav.navigate("call/$roomId")
-                    }
+                    },
+                    onOpenSettings = { nav.navigate("settings") }
                 )
+            }
+            composable("settings") {
+                SettingsScreen(onBack = { nav.popBackStack() })
             }
             composable("call/{roomId}") { backStackEntry ->
                 val roomId = backStackEntry.arguments?.getString("roomId").orEmpty()

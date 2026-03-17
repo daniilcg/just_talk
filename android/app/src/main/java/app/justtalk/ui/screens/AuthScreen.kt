@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -42,7 +42,8 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
@@ -53,22 +54,29 @@ fun AuthScreen(
     var email by remember { mutableStateOf("") }
     var signalingUrl by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var turnUrl by remember { mutableStateOf("") }
-    var turnUser by remember { mutableStateOf("") }
-    var turnPass by remember { mutableStateOf("") }
     var ready by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var configHint by remember { mutableStateOf<String?>(null) }
-    var showTurn by remember { mutableStateOf(false) }
+    var configError by remember { mutableStateOf<String?>(null) }
+
+    suspend fun refreshConfig() {
+        ready = false
+        configError = null
+        val url = store.signalingUrl.first()
+        val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
+        val resolvedUrl = remote?.signalingUrl ?: url
+        signalingUrl = resolvedUrl
+        if (resolvedUrl.startsWith("ws")) {
+            store.setSignalingUrl(resolvedUrl)
+        } else {
+            configError = remoteErr ?: "no_config"
+        }
+        ready = true
+    }
 
     LaunchedEffect(Unit) {
         val uid = store.uid.first()
         val n = store.nickname.first()
         val e = store.email.first()
-        val url = store.signalingUrl.first()
-        val tUrl = store.turnUrl.first()
-        val tUser = store.turnUser.first()
-        val tPass = store.turnPass.first()
         if (!uid.isNullOrBlank()) {
             onDone()
             return@LaunchedEffect
@@ -76,21 +84,7 @@ fun AuthScreen(
         nickname = n.orEmpty()
         email = e.orEmpty()
         // Auto-config from GitHub raw JSON for "friends don't configure anything"
-        val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
-        val resolvedUrl = remote?.signalingUrl ?: url
-        signalingUrl = resolvedUrl
-        configHint = when {
-            remote?.signalingUrl?.startsWith("ws") == true -> "Автоконфиг: OK"
-            remoteErr != null -> "Автоконфиг: $remoteErr"
-            else -> "Автоконфиг: нет"
-        }
-        if (resolvedUrl.startsWith("ws")) {
-            store.setSignalingUrl(resolvedUrl)
-        }
-        turnUrl = tUrl.orEmpty()
-        turnUser = tUser.orEmpty()
-        turnPass = tPass.orEmpty()
-        ready = true
+        refreshConfig()
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -141,57 +135,22 @@ fun AuthScreen(
             )
             Spacer(Modifier.height(12.dp))
             val serverLabel = if (signalingUrl.startsWith("ws")) signalingUrl else "не настроен"
-            Text("Сервер: $serverLabel")
-            configHint?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it)
-            }
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = signalingUrl,
-                onValueChange = { signalingUrl = it.trim() },
-                label = { Text("Signaling URL (wss://...)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                singleLine = true,
-                enabled = ready
-            )
-            Spacer(Modifier.height(12.dp))
-            TextButton(onClick = { showTurn = !showTurn }, enabled = ready) {
-                Text(if (showTurn) "Скрыть TURN" else "Показать TURN (если не соединяется)")
-            }
-            if (showTurn) {
+            // Hidden from normal users; shown only as a simple status.
+            Text("Сервер: ${if (serverLabel == \"не настроен\") \"не доступен\" else \"подключен\"}")
+            if (configError != null) {
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = turnUrl,
-                    onValueChange = { turnUrl = it },
-                    label = { Text("TURN URL (turn:host:3478)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    singleLine = true,
-                    enabled = ready
-                )
+                Text("Не удалось загрузить настройки сервера. Проверь интернет.")
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = turnUser,
-                    onValueChange = { turnUser = it },
-                    label = { Text("TURN user") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    singleLine = true,
-                    enabled = ready
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = turnPass,
-                    onValueChange = { turnPass = it },
-                    label = { Text("TURN pass") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                    enabled = ready
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        enabled = ready,
+                        onClick = { scope.launch { refreshConfig() } }
+                    ) { Text("Повторить") }
+                    Spacer(Modifier.width(12.dp))
+                    TextButton(enabled = ready, onClick = onOpenSettings) {
+                        Text("Доп. настройки")
+                    }
+                }
             }
             if (error != null) {
                 Spacer(Modifier.height(10.dp))
@@ -219,9 +178,6 @@ fun AuthScreen(
                                 store.setNickname(ev.nickname)
                                 if (!ev.email.isNullOrBlank()) store.setEmail(ev.email)
                                 secure.setPassword(password)
-                                if (turnUrl.isNotBlank() && turnUser.isNotBlank() && turnPass.isNotBlank()) {
-                                    store.setTurn(turnUrl, turnUser, turnPass)
-                                }
                                 error = null
                                 onDone()
                             }

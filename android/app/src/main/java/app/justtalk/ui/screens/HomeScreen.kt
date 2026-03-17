@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,7 +49,8 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onStartCall: (roomId: String) -> Unit
+    onStartCall: (roomId: String) -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
@@ -139,7 +141,12 @@ fun HomeScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("JustTalk") })
+        TopAppBar(
+            title = { Text("JustTalk") },
+            actions = {
+                TextButton(onClick = onOpenSettings) { Text("Настройки") }
+            }
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -156,11 +163,17 @@ fun HomeScreen(
             }
             Text("PeerId: ${peerId.take(8)}…")
             Spacer(Modifier.height(6.dp))
-            Text("Signaling: $signalingUrl")
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text("Статус: $directoryStatus")
             Spacer(Modifier.height(14.dp))
+
+            if (!signalingUrl.startsWith("ws")) {
+                Text("Сервер не настроен. Открой настройки и вставь ссылку сервера.")
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = onOpenSettings) { Text("Открыть настройки") }
+                Spacer(Modifier.height(18.dp))
+            }
 
             Text("Найти друга по UID или никнейму (он должен быть онлайн):")
             Spacer(Modifier.height(8.dp))
