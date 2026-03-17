@@ -17,6 +17,7 @@ const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
  * - lookup_uid: {type:"lookup_uid", uid:"0000001"} -> {type:"lookup_uid_result", uid, nickname, onlinePeerId:null|"<id>"}
  * - lookup_nickname: {type:"lookup_nickname", nickname:"nick"} -> {type:"lookup_nickname_result", nickname, uid:null|"0000001", onlinePeerId:null|"<id>"}
  * - invite_uid: {type:"invite_uid", from:"<peerId>", toUid:"0000001", room:"<roomId>"} -> to target: {type:"invite", from:"<peerId>", room:"<roomId>"}
+ * - msg_uid: {type:"msg_uid", toUid:"<uid>", text:"..."} -> to target: {type:"msg", fromUid:"<uid>", text:"...", tsMs:<num>}
  * - set_fcm_token: {type:"set_fcm_token", token:"..."} -> {type:"set_fcm_token_ok"}
  *
  * Server does NOT store chat/media; only relays signaling messages to peers in same room.
@@ -220,6 +221,31 @@ wss.on("connection", (ws) => {
               })
             : false;
         send(ws, { type: "invite_result", ok: pushed, reason: pushed ? null : "not_online" });
+      }
+      return;
+    }
+
+    if (msg.type === "msg_uid") {
+      const fromUid = String(state.uid ?? "").trim();
+      const toUid = String(msg.toUid ?? "").trim();
+      const textMsg = String(msg.text ?? "");
+      const text = textMsg.trim();
+      if (!fromUid) {
+        send(ws, { type: "error", code: "not_logged_in" });
+        return;
+      }
+      if (!toUid || text.length < 1 || text.length > 2000) {
+        send(ws, { type: "error", code: "bad_msg" });
+        return;
+      }
+      const toPeerId = onlineByUid.get(toUid);
+      const targetWs = toPeerId ? peers.get(toPeerId) : null;
+      const payload = { type: "msg", fromUid, text, tsMs: Date.now() };
+      if (targetWs) {
+        send(targetWs, payload);
+        send(ws, { type: "msg_result", ok: true });
+      } else {
+        send(ws, { type: "msg_result", ok: false, reason: "not_online" });
       }
       return;
     }
