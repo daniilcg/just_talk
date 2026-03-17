@@ -133,7 +133,16 @@ fun HomeScreen(
                     directoryStatus = if (ev.ok) "Инвайт отправлен" else "Инвайт: ${ev.reason ?: "ошибка"}"
                 }
                 DirectoryEvent.SetFcmTokenOk -> Unit
-                is DirectoryEvent.Error -> directoryStatus = "Ошибка: ${ev.code}"
+                is DirectoryEvent.Error -> {
+                    directoryStatus = buildString {
+                        append("Ошибка: ")
+                        append(ev.code)
+                        if (!ev.details.isNullOrBlank()) {
+                            append(": ")
+                            append(ev.details)
+                        }
+                    }
+                }
                 DirectoryEvent.Closed -> directoryStatus = "Отключено"
                 else -> Unit
             }

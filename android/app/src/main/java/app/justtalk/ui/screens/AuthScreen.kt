@@ -184,7 +184,15 @@ fun AuthScreen(
                                 error = null
                                 onDone()
                             }
-                            is DirectoryEvent.Error -> error = ev.code
+                            is DirectoryEvent.Error -> {
+                                error = buildString {
+                                    append(ev.code)
+                                    if (!ev.details.isNullOrBlank()) {
+                                        append(": ")
+                                        append(ev.details)
+                                    }
+                                }
+                            }
                             else -> error = "timeout"
                         }
                     }
