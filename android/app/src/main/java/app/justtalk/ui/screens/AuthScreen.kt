@@ -2,11 +2,13 @@ package app.justtalk.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
@@ -136,7 +138,8 @@ fun AuthScreen(
             Spacer(Modifier.height(12.dp))
             val serverLabel = if (signalingUrl.startsWith("ws")) signalingUrl else "не настроен"
             // Hidden from normal users; shown only as a simple status.
-            Text("Сервер: ${if (serverLabel == \"не настроен\") \"не доступен\" else \"подключен\"}")
+            val serverStatus = if (serverLabel == "не настроен") "не доступен" else "подключен"
+            Text("Сервер: $serverStatus")
             if (configError != null) {
                 Spacer(Modifier.height(8.dp))
                 Text("Не удалось загрузить настройки сервера. Проверь интернет.")
