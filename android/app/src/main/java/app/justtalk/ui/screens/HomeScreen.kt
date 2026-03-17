@@ -30,16 +30,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.justtalk.core.config.RemoteConfig
 import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.FriendsStore
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,9 +81,17 @@ fun HomeScreen(
         uid = store.uid.first().orEmpty()
         email = store.email.first().orEmpty()
         nickname = store.nickname.first().orEmpty()
-        signalingUrl = store.signalingUrl.first()
-
-        directory = DirectoryClient(signalingUrl).also { it.connect() }
+        val saved = store.signalingUrl.first()
+        val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
+        val resolved = remote?.signalingUrl ?: saved
+        signalingUrl = resolved
+        if (resolved.startsWith("ws")) {
+            store.setSignalingUrl(resolved)
+            directory = DirectoryClient(resolved).also { it.connect() }
+        } else {
+            directoryStatus = "Сервер не настроен (${remoteErr ?: "no_config"})"
+            directory = null
+        }
     }
 
     LaunchedEffect(Unit) {

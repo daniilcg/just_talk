@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
@@ -57,6 +58,8 @@ fun AuthScreen(
     var turnPass by remember { mutableStateOf("") }
     var ready by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var configHint by remember { mutableStateOf<String?>(null) }
+    var showTurn by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val uid = store.uid.first()
@@ -73,9 +76,14 @@ fun AuthScreen(
         nickname = n.orEmpty()
         email = e.orEmpty()
         // Auto-config from GitHub raw JSON for "friends don't configure anything"
-        val remote = withContext(Dispatchers.IO) { RemoteConfig.fetch() }
+        val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
         val resolvedUrl = remote?.signalingUrl ?: url
         signalingUrl = resolvedUrl
+        configHint = when {
+            remote?.signalingUrl?.startsWith("ws") == true -> "Автоконфиг: OK"
+            remoteErr != null -> "Автоконфиг: $remoteErr"
+            else -> "Автоконфиг: нет"
+        }
         if (resolvedUrl.startsWith("ws")) {
             store.setSignalingUrl(resolvedUrl)
         }
@@ -134,39 +142,57 @@ fun AuthScreen(
             Spacer(Modifier.height(12.dp))
             val serverLabel = if (signalingUrl.startsWith("ws")) signalingUrl else "не настроен"
             Text("Сервер: $serverLabel")
-            Spacer(Modifier.height(12.dp))
-            Text("TURN (если у друзей не соединяется, можно настроить позже)")
-            Spacer(Modifier.height(8.dp))
+            configHint?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it)
+            }
+            Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
-                value = turnUrl,
-                onValueChange = { turnUrl = it },
-                label = { Text("TURN URL (turn:host:3478)") },
+                value = signalingUrl,
+                onValueChange = { signalingUrl = it.trim() },
+                label = { Text("Signaling URL (wss://...)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 singleLine = true,
                 enabled = ready
             )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = turnUser,
-                onValueChange = { turnUser = it },
-                label = { Text("TURN user") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                singleLine = true,
-                enabled = ready
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = turnPass,
-                onValueChange = { turnPass = it },
-                label = { Text("TURN pass") },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                enabled = ready
-            )
+            Spacer(Modifier.height(12.dp))
+            TextButton(onClick = { showTurn = !showTurn }, enabled = ready) {
+                Text(if (showTurn) "Скрыть TURN" else "Показать TURN (если не соединяется)")
+            }
+            if (showTurn) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = turnUrl,
+                    onValueChange = { turnUrl = it },
+                    label = { Text("TURN URL (turn:host:3478)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    singleLine = true,
+                    enabled = ready
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = turnUser,
+                    onValueChange = { turnUser = it },
+                    label = { Text("TURN user") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                    singleLine = true,
+                    enabled = ready
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = turnPass,
+                    onValueChange = { turnPass = it },
+                    label = { Text("TURN pass") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    enabled = ready
+                )
+            }
             if (error != null) {
                 Spacer(Modifier.height(10.dp))
                 Text("Ошибка: $error")

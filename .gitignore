@@ -24,3 +24,6 @@ server/users.json
 # CI / logs
 gradle-build.log
 
+# Downloaded GitHub Actions artifacts
+justtalk-debug-apk/
+
