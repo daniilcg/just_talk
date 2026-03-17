@@ -7,19 +7,23 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import app.justtalk.data.ProfileStore
 import app.justtalk.ui.screens.AuthScreen
 import app.justtalk.ui.screens.CallScreen
 import app.justtalk.ui.screens.HomeScreen
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 private val LightColors = lightColorScheme()
 private val DarkColors = darkColorScheme()
 
 @Composable
-fun JustTalkApp() {
+fun JustTalkApp(initialRoomId: String?) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
     val colorScheme =
@@ -30,8 +34,14 @@ fun JustTalkApp() {
         }
 
     MaterialTheme(colorScheme = colorScheme) {
+        val store = remember { ProfileStore(context) }
+        val hasUid = remember { runBlocking { !store.uid.first().isNullOrBlank() } }
+
         val nav = rememberNavController()
-        NavHost(navController = nav, startDestination = "auth") {
+        val startDestination =
+            if (!initialRoomId.isNullOrBlank() && hasUid) "call/$initialRoomId" else "auth"
+
+        NavHost(navController = nav, startDestination = startDestination) {
             composable("auth") {
                 AuthScreen(
                     onDone = { nav.navigate("home") { popUpTo("auth") { inclusive = true } } }

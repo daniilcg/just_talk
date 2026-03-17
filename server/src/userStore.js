@@ -69,6 +69,7 @@ export class UserStore {
       email: emailLower ? emailStr : null,
       emailLower,
       passwordHash,
+      fcmToken: null,
       createdAtMs: Date.now()
     };
     this.persist();
@@ -79,7 +80,13 @@ export class UserStore {
   getByUid(uid) {
     const u = this.db.users[String(uid ?? "")] ?? null;
     if (!u) return null;
-    return { uid: u.uid, nickname: u.nickname, email: u.email ?? null, passwordHash: u.passwordHash ?? null };
+    return {
+      uid: u.uid,
+      nickname: u.nickname,
+      email: u.email ?? null,
+      passwordHash: u.passwordHash ?? null,
+      fcmToken: u.fcmToken ?? null
+    };
   }
 
   /** @returns {{uid:string, nickname:string, email:string|null}|null} */
@@ -88,9 +95,25 @@ export class UserStore {
     if (!nickLower) return null;
     for (const u of Object.values(this.db.users)) {
       if (u.nicknameLower === nickLower)
-        return { uid: u.uid, nickname: u.nickname, email: u.email ?? null, passwordHash: u.passwordHash ?? null };
+        return {
+          uid: u.uid,
+          nickname: u.nickname,
+          email: u.email ?? null,
+          passwordHash: u.passwordHash ?? null,
+          fcmToken: u.fcmToken ?? null
+        };
     }
     return null;
+  }
+
+  setFcmToken(uid, token) {
+    const id = String(uid ?? "").trim();
+    const t = String(token ?? "").trim();
+    const u = this.db.users[id];
+    if (!u) return false;
+    u.fcmToken = t || null;
+    this.persist();
+    return true;
   }
 }
 

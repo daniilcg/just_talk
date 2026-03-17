@@ -18,6 +18,7 @@ sealed interface DirectoryEvent {
     data class LookupNicknameResult(val nickname: String, val uid: String?, val onlinePeerId: String?) : DirectoryEvent
     data class Invite(val fromPeerId: String, val roomId: String) : DirectoryEvent
     data class InviteResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
+    data object SetFcmTokenOk : DirectoryEvent
     data class Error(val code: String, val details: String? = null) : DirectoryEvent
     data object Closed : DirectoryEvent
 }
@@ -90,6 +91,7 @@ class DirectoryClient(
                             reason = obj.optString("reason", null)
                         )
                     )
+                    "set_fcm_token_ok" -> _events.tryEmit(DirectoryEvent.SetFcmTokenOk)
                     "error" -> _events.tryEmit(
                         DirectoryEvent.Error(
                             code = obj.optString("code", "error"),
@@ -149,6 +151,13 @@ class DirectoryClient(
             .put("from", fromPeerId)
             .put("toUid", toUid.trim())
             .put("room", roomId)
+        ws?.send(obj.toString())
+    }
+
+    fun setFcmToken(token: String) {
+        val obj = JSONObject()
+            .put("type", "set_fcm_token")
+            .put("token", token)
         ws?.send(obj.toString())
     }
 

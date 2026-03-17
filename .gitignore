@@ -16,4 +16,8 @@ Desktop.ini
 # Node
 server/node_modules/
 server/.env
+server/users.json
+
+# Firebase
+**/google-services.json
 
