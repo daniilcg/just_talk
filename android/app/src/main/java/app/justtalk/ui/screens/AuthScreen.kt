@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 
+private enum class Mode { Signup, Login }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
@@ -52,8 +54,6 @@ fun AuthScreen(
     val store = remember { ProfileStore(context) }
     val secure = remember { SecurePasswordStore(context) }
     val scope = rememberCoroutineScope()
-
-    enum class Mode { Signup, Login }
 
     var mode by remember { mutableStateOf(Mode.Signup) }
     var uidInput by remember { mutableStateOf("") }
