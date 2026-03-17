@@ -31,7 +31,8 @@ class WebRtcClient(
     private val videoEnabled: Boolean = true,
     private val onLocalTrack: (VideoTrack) -> Unit,
     private val onRemoteTrack: (VideoTrack) -> Unit,
-    private val onIceCandidate: (IceCandidate) -> Unit,
+    // Renamed to avoid clashing with PeerConnection.Observer.onIceCandidate and recursion issues.
+    private val onIceCandidateCallback: (IceCandidate) -> Unit,
     private val onConnectionState: (PeerConnection.PeerConnectionState) -> Unit,
     private val onDataChannel: (DataChannel) -> Unit
 ) {
@@ -75,7 +76,15 @@ class WebRtcClient(
                     override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
                     override fun onIceGatheringChange(newState: PeerConnection.IceGatheringState) = Unit
                     override fun onIceCandidate(candidate: IceCandidate) {
-                        onIceCandidate(candidate)
+                        // Guard against exceptions here: any uncaught exception on this thread
+                        // will terminate the native WebRTC stack (see jvm.cc fatal).
+                        try {
+                            onIceCandidateCallback(candidate)
+                        } catch (t: Throwable) {
+                            // Best-effort log via standard error; avoids crashing native code.
+                            System.err.println("WebRtcClient onIceCandidate callback error: ${t.message}")
+                            t.printStackTrace()
+                        }
                     }
 
                     override fun onIceCandidatesRemoved(candidates: Array<IceCandidate>) = Unit
