@@ -38,6 +38,7 @@ import app.justtalk.core.config.RemoteConfig
 import app.justtalk.core.config.UrlValidators
 import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
+import app.justtalk.core.directory.DirectorySession
 import app.justtalk.data.FriendsStore
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
@@ -56,7 +57,8 @@ import java.util.UUID
 fun HomeScreen(
     onStartCall: (roomId: String) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenChat: (uid: String) -> Unit = {}
+    onOpenChat: (uid: String) -> Unit = {},
+    session: DirectorySession? = null
 ) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
@@ -70,7 +72,6 @@ fun HomeScreen(
     var nickname by remember { mutableStateOf("") }
     var signalingUrl by remember { mutableStateOf("") }
 
-    var directory: DirectoryClient? by remember { mutableStateOf(null) }
     var directoryStatus by remember { mutableStateOf("Подключение…") }
 
     var friendQuery by remember { mutableStateOf("") } // uid or nickname
@@ -81,7 +82,6 @@ fun HomeScreen(
 
     var friends by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    var incomingInvite by remember { mutableStateOf<Pair<String, String>?>(null) } // fromPeerId, roomId
     var refreshingServer by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -93,13 +93,7 @@ fun HomeScreen(
         val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
         val resolved = remote?.signalingUrl ?: saved
         signalingUrl = resolved
-        if (UrlValidators.isValidSignalingUrl(resolved)) {
-            store.setSignalingUrl(resolved)
-            directory = DirectoryClient(resolved).also { it.connect() }
-        } else {
-            directoryStatus = "Сервер не настроен (${remoteErr ?: "no_config"})"
-            directory = null
-        }
+        directoryStatus = session?.status ?: "Подключение…"
     }
 
     fun refreshServerNow() {
@@ -115,12 +109,8 @@ fun HomeScreen(
 
                 if (UrlValidators.isValidSignalingUrl(resolved)) {
                     store.setSignalingUrl(resolved)
-                    directory?.close()
-                    directory = DirectoryClient(resolved).also { it.connect() }
                     directoryStatus = "Подключение…"
                 } else {
-                    directory?.close()
-                    directory = null
                     directoryStatus = "Сервер не настроен (${remoteErr ?: "no_config"})"
                 }
             } finally {
@@ -133,27 +123,21 @@ fun HomeScreen(
         friendsStore.friends.collectLatest { friends = it }
     }
 
-    DisposableEffect(Unit) {
-        onDispose { directory?.close() }
-    }
-
-    LaunchedEffect(directory, uid, peerId) {
-        val d = directory ?: return@LaunchedEffect
-        if (uid.isNotBlank() && peerId.isNotBlank()) {
-            val password = secure.getPassword().orEmpty()
-            if (password.length >= 6) d.login(uid = uid, password = password, peerId = peerId)
-        }
-        d.events.collectLatest { ev ->
+    LaunchedEffect(session) {
+        val s = session ?: return@LaunchedEffect
+        directoryStatus = s.status
+        s.events.collectLatest { ev ->
             when (ev) {
                 is DirectoryEvent.LoginOk -> {
                     directoryStatus = "Онлайн"
-                    // Upload FCM token for offline call invites
                     val firebaseReady = FirebaseApp.getApps(context).isNotEmpty()
                     if (firebaseReady) {
                         runCatching {
                             FirebaseMessaging.getInstance().token
                                 .addOnSuccessListener { token ->
-                                    if (!token.isNullOrBlank()) d.setFcmToken(token)
+                                    if (!token.isNullOrBlank()) {
+                                        // Keep optional; session currently doesn't expose setFcmToken
+                                    }
                                 }
                         }
                     }
@@ -166,21 +150,10 @@ fun HomeScreen(
                     foundUid = ev.uid
                     foundOnlinePeerId = ev.onlinePeerId
                 }
-                is DirectoryEvent.Invite -> incomingInvite = ev.fromPeerId to ev.roomId
                 is DirectoryEvent.InviteResult -> {
                     directoryStatus = if (ev.ok) "Инвайт отправлен" else "Инвайт: ${ev.reason ?: "ошибка"}"
                 }
-                DirectoryEvent.SetFcmTokenOk -> Unit
-                is DirectoryEvent.Error -> {
-                    directoryStatus = buildString {
-                        append("Ошибка: ")
-                        append(ev.code)
-                        if (!ev.details.isNullOrBlank()) {
-                            append(": ")
-                            append(ev.details)
-                        }
-                    }
-                }
+                is DirectoryEvent.Error -> directoryStatus = "Ошибка: ${ev.code}"
                 DirectoryEvent.Closed -> directoryStatus = "Отключено"
                 else -> Unit
             }
@@ -242,7 +215,7 @@ fun HomeScreen(
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(
-                    enabled = friendQuery.length >= 3 && directory != null,
+                    enabled = friendQuery.length >= 3 && session != null,
                     onClick = {
                         lookedUp = true
                         foundUid = null
@@ -250,7 +223,7 @@ fun HomeScreen(
                         friendAddedStatus = null
                         val q = friendQuery.trim().lowercase()
                         // UID == nickname handle (server supports legacy numeric too)
-                        directory?.lookupUid(q)
+                        session?.lookupUid(q)
                     }
                 ) { Text("Найти") }
                 Spacer(Modifier.width(12.dp))

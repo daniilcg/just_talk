@@ -31,13 +31,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
-import app.justtalk.data.ChatHistoryStore
+import app.justtalk.core.directory.DirectorySession
+import app.justtalk.data.ChatFileStore
 import app.justtalk.data.ChatLine
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -47,53 +46,41 @@ import java.util.UUID
 fun ChatScreen(
     uid: String,
     onBack: () -> Unit,
-    onStartCall: (roomId: String, isVideo: Boolean) -> Unit
+    onStartCall: (roomId: String, isVideo: Boolean) -> Unit,
+    session: DirectorySession
 ) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val secure = remember { SecurePasswordStore(context) }
-    val history = remember { ChatHistoryStore(context) }
+    val fileStore = remember { ChatFileStore(context) }
     val scope = rememberCoroutineScope()
 
     val messages = remember { mutableStateListOf<String>() }
     var text by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Подключение…") }
 
-    var directory: DirectoryClient? by remember { mutableStateOf(null) }
     var myUid by remember { mutableStateOf("") }
     var peerId by remember { mutableStateOf("") }
 
     LaunchedEffect(uid) {
         messages.clear()
         messages.addAll(
-            history.load(uid).map { l ->
+            fileStore.load(uid).map { l ->
                 (if (l.dir == "out") "Я: " else "Друг: ") + l.text
             }
         )
         myUid = store.uid.first().orEmpty()
         peerId = store.ensurePeerId()
-        val url = store.signalingUrl.first()
-        directory?.close()
-        directory = DirectoryClient(url).also { it.connect() }
     }
 
-    LaunchedEffect(directory, myUid, peerId) {
-        val d = directory ?: return@LaunchedEffect
-        val me = myUid
-        if (me.isBlank()) {
-            status = "Не авторизован"
-            return@LaunchedEffect
-        }
-        val pass = secure.getPassword().orEmpty()
-        if (pass.length >= 6) {
-            d.login(uid = me, password = pass, peerId = peerId)
-        }
-        d.events.collectLatest { ev ->
+    LaunchedEffect(session, uid) {
+        status = session.status
+        session.events.collectLatest { ev ->
             when (ev) {
                 is DirectoryEvent.LoginOk -> status = "Онлайн"
                 is DirectoryEvent.Msg -> {
                     if (ev.fromUid.trim().lowercase() == uid.trim().lowercase()) {
-                        history.append(uid, ChatLine(dir = "in", text = ev.text, tsMs = ev.tsMs))
+                        fileStore.append(uid, ChatLine(dir = "in", text = ev.text, tsMs = ev.tsMs))
                         messages.add("Друг: ${ev.text}")
                     }
                 }
@@ -114,12 +101,12 @@ fun ChatScreen(
                 TextButton(onClick = {
                     val room = UUID.randomUUID().toString().substring(0, 8)
                     // Invite friend then start call
-                    directory?.inviteUid(fromPeerId = peerId, toUid = uid, roomId = room)
+                    session.inviteUid(toUid = uid, roomId = room)
                     onStartCall(room, false)
                 }) { Text("Аудио") }
                 TextButton(onClick = {
                     val room = UUID.randomUUID().toString().substring(0, 8)
-                    directory?.inviteUid(fromPeerId = peerId, toUid = uid, roomId = room)
+                    session.inviteUid(toUid = uid, roomId = room)
                     onStartCall(room, true)
                 }) { Text("Видео") }
             }
@@ -161,9 +148,9 @@ fun ChatScreen(
                         val t = text.trim()
                         text = ""
                         scope.launch {
-                            history.append(uid, ChatLine(dir = "out", text = t, tsMs = System.currentTimeMillis()))
+                            fileStore.append(uid, ChatLine(dir = "out", text = t, tsMs = System.currentTimeMillis()))
                             messages.add("Я: $t")
-                            directory?.sendMsgUid(toUid = uid, text = t)
+                            session.sendMsg(toUid = uid, text = t)
                         }
                     }
                 ) {
