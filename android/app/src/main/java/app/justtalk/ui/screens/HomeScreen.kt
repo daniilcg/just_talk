@@ -35,6 +35,7 @@ import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.FriendsStore
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -98,7 +99,14 @@ fun HomeScreen(
         }
         d.events.collectLatest { ev ->
             when (ev) {
-                is DirectoryEvent.LoginOk -> directoryStatus = "Онлайн"
+                is DirectoryEvent.LoginOk -> {
+                    directoryStatus = "Онлайн"
+                    // Upload FCM token for offline call invites
+                    FirebaseMessaging.getInstance().token
+                        .addOnSuccessListener { token ->
+                            if (!token.isNullOrBlank()) d.setFcmToken(token)
+                        }
+                }
                 is DirectoryEvent.LookupUidResult -> {
                     foundUid = ev.uid
                     foundOnlinePeerId = ev.onlinePeerId
@@ -111,6 +119,7 @@ fun HomeScreen(
                 is DirectoryEvent.InviteResult -> {
                     directoryStatus = if (ev.ok) "Инвайт отправлен" else "Инвайт: ${ev.reason ?: "ошибка"}"
                 }
+                DirectoryEvent.SetFcmTokenOk -> Unit
                 is DirectoryEvent.Error -> directoryStatus = "Ошибка: ${ev.code}"
                 DirectoryEvent.Closed -> directoryStatus = "Отключено"
                 else -> Unit

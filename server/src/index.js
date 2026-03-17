@@ -1,6 +1,7 @@
 import { WebSocketServer } from "ws";
 import { UserStore } from "./userStore.js";
 import bcrypt from "bcryptjs";
+import { sendPush } from "./fcm.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
 
@@ -16,6 +17,7 @@ const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
  * - lookup_uid: {type:"lookup_uid", uid:"0000001"} -> {type:"lookup_uid_result", uid, nickname, onlinePeerId:null|"<id>"}
  * - lookup_nickname: {type:"lookup_nickname", nickname:"nick"} -> {type:"lookup_nickname_result", nickname, uid:null|"0000001", onlinePeerId:null|"<id>"}
  * - invite_uid: {type:"invite_uid", from:"<peerId>", toUid:"0000001", room:"<roomId>"} -> to target: {type:"invite", from:"<peerId>", room:"<roomId>"}
+ * - set_fcm_token: {type:"set_fcm_token", token:"..."} -> {type:"set_fcm_token_ok"}
  *
  * Server does NOT store chat/media; only relays signaling messages to peers in same room.
  */
@@ -67,7 +69,7 @@ wss.on("connection", (ws) => {
   /** @type {{roomId?: string, peerId?: string, uid?: string, nicknameLower?: string}} */
   const state = {};
 
-  ws.on("message", (data) => {
+  ws.on("message", async (data) => {
     const text = typeof data === "string" ? data : data.toString("utf8");
     const msg = safeJsonParse(text);
     if (!msg || typeof msg.type !== "string") {
@@ -198,17 +200,38 @@ wss.on("connection", (ws) => {
         return;
       }
       const toPeerId = onlineByUid.get(toUid);
-      if (!toPeerId) {
-        send(ws, { type: "invite_result", ok: false, reason: "not_online" });
+      const targetWs = toPeerId ? peers.get(toPeerId) : null;
+      if (targetWs) {
+        send(targetWs, { type: "invite", from, room });
+        send(ws, { type: "invite_result", ok: true, toPeerId });
+      } else {
+        // Try push notification (offline)
+        const u = userStore.getByUid(toUid);
+        const token = u?.fcmToken ?? null;
+        const pushed =
+          token
+            ? await sendPush({
+                token,
+                data: {
+                  type: "invite",
+                  roomId: room,
+                  from
+                }
+              })
+            : false;
+        send(ws, { type: "invite_result", ok: pushed, reason: pushed ? null : "not_online" });
+      }
+      return;
+    }
+
+    if (msg.type === "set_fcm_token") {
+      const token = String(msg.token ?? "").trim();
+      if (!state.uid) {
+        send(ws, { type: "error", code: "not_logged_in" });
         return;
       }
-      const targetWs = peers.get(toPeerId);
-      if (!targetWs) {
-        send(ws, { type: "invite_result", ok: false, reason: "not_connected" });
-        return;
-      }
-      send(targetWs, { type: "invite", from, room });
-      send(ws, { type: "invite_result", ok: true, toPeerId });
+      userStore.setFcmToken(state.uid, token);
+      send(ws, { type: "set_fcm_token_ok" });
       return;
     }
 

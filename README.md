@@ -27,6 +27,17 @@ npm run dev
 
 По умолчанию сервер стартует на `ws://localhost:8080`.
 
+### Push (FCM) для входящих звонков
+
+Чтобы работали push-уведомления на входящий звонок (когда приложение закрыто), нужно:
+
+- **Android**: добавить файл Firebase `google-services.json` в `android/app/google-services.json`
+- **Server**: настроить `firebase-admin`:
+  - в Firebase Console → Project Settings → Service accounts → сгенерировать ключ
+  - задать переменную окружения `GOOGLE_APPLICATION_CREDENTIALS` на путь к JSON ключу
+
+Без этой настройки звонки работают только когда оба онлайн и подключены к сигналингу.
+
 ## Android
 
 Открой `android/` в Android Studio, дождись Gradle Sync, затем запусти на устройстве/эмуляторе.

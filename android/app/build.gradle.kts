@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -72,6 +73,10 @@ dependencies {
 
     // EncryptedSharedPreferences (store password locally)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Firebase (Push notifications)
+    implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
+    implementation("com.google.firebase:firebase-messaging")
 
     // OkHttp WebSocket (signaling)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
