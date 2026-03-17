@@ -18,6 +18,8 @@ sealed interface DirectoryEvent {
     data class LookupNicknameResult(val nickname: String, val uid: String?, val onlinePeerId: String?) : DirectoryEvent
     data class Invite(val fromPeerId: String, val roomId: String) : DirectoryEvent
     data class InviteResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
+    data class Msg(val fromUid: String, val text: String, val tsMs: Long) : DirectoryEvent
+    data class MsgResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
     data object SetFcmTokenOk : DirectoryEvent
     data class Error(val code: String, val details: String? = null) : DirectoryEvent
     data object Closed : DirectoryEvent
@@ -91,6 +93,19 @@ class DirectoryClient(
                             reason = obj.optString("reason", null)
                         )
                     )
+                    "msg" -> _events.tryEmit(
+                        DirectoryEvent.Msg(
+                            fromUid = obj.optString("fromUid"),
+                            text = obj.optString("text"),
+                            tsMs = obj.optLong("tsMs", 0L)
+                        )
+                    )
+                    "msg_result" -> _events.tryEmit(
+                        DirectoryEvent.MsgResult(
+                            ok = obj.optBoolean("ok", false),
+                            reason = obj.optString("reason", null)
+                        )
+                    )
                     "set_fcm_token_ok" -> _events.tryEmit(DirectoryEvent.SetFcmTokenOk)
                     "error" -> _events.tryEmit(
                         DirectoryEvent.Error(
@@ -151,6 +166,14 @@ class DirectoryClient(
             .put("from", fromPeerId)
             .put("toUid", toUid.trim())
             .put("room", roomId)
+        ws?.send(obj.toString())
+    }
+
+    fun sendMsgUid(toUid: String, text: String) {
+        val obj = JSONObject()
+            .put("type", "msg_uid")
+            .put("toUid", toUid.trim())
+            .put("text", text)
         ws?.send(obj.toString())
     }
 
