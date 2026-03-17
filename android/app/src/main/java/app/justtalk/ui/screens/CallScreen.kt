@@ -138,9 +138,24 @@ fun CallScreen(
                     status = "Комната: $roomId"
                     targetPeerId = ev.peers.firstOrNull()
                     if (webrtc == null) {
+                        val turnUrl = store.turnUrl.first().orEmpty()
+                        val turnUser = store.turnUser.first().orEmpty()
+                        val turnPass = store.turnPass.first().orEmpty()
+                        val ice = buildList {
+                            add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
+                            if (turnUrl.isNotBlank() && turnUser.isNotBlank() && turnPass.isNotBlank()) {
+                                add(
+                                    PeerConnection.IceServer.builder(turnUrl)
+                                        .setUsername(turnUser)
+                                        .setPassword(turnPass)
+                                        .createIceServer()
+                                )
+                            }
+                        }
                         webrtc = WebRtcClient(
                             appContext = context.applicationContext,
                             eglBase = eglBase,
+                            iceServers = ice,
                             onLocalTrack = { track -> localRenderer?.let { track.addSink(it) } },
                             onRemoteTrack = { track -> remoteRenderer?.let { track.addSink(it) } },
                             onIceCandidate = { c -> s.sendSignal(targetPeerId, WebRtcClient.iceToJson(c)) },

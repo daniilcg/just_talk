@@ -49,6 +49,9 @@ fun AuthScreen(
     var email by remember { mutableStateOf("") }
     var signalingUrl by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var turnUrl by remember { mutableStateOf("") }
+    var turnUser by remember { mutableStateOf("") }
+    var turnPass by remember { mutableStateOf("") }
     var ready by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -57,6 +60,9 @@ fun AuthScreen(
         val n = store.nickname.first()
         val e = store.email.first()
         val url = store.signalingUrl.first()
+        val tUrl = store.turnUrl.first()
+        val tUser = store.turnUser.first()
+        val tPass = store.turnPass.first()
         if (!uid.isNullOrBlank()) {
             onDone()
             return@LaunchedEffect
@@ -64,6 +70,9 @@ fun AuthScreen(
         nickname = n.orEmpty()
         email = e.orEmpty()
         signalingUrl = url
+        turnUrl = tUrl.orEmpty()
+        turnUser = tUser.orEmpty()
+        turnPass = tPass.orEmpty()
         ready = true
     }
 
@@ -123,6 +132,39 @@ fun AuthScreen(
                 singleLine = true,
                 enabled = ready
             )
+            Spacer(Modifier.height(12.dp))
+            Text("TURN (если у друзей не соединяется, можно настроить позже)")
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = turnUrl,
+                onValueChange = { turnUrl = it },
+                label = { Text("TURN URL (turn:host:3478)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                singleLine = true,
+                enabled = ready
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = turnUser,
+                onValueChange = { turnUser = it },
+                label = { Text("TURN user") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                singleLine = true,
+                enabled = ready
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = turnPass,
+                onValueChange = { turnPass = it },
+                label = { Text("TURN pass") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                enabled = ready
+            )
             if (error != null) {
                 Spacer(Modifier.height(10.dp))
                 Text("Ошибка: $error")
@@ -149,6 +191,9 @@ fun AuthScreen(
                                 store.setNickname(ev.nickname)
                                 if (!ev.email.isNullOrBlank()) store.setEmail(ev.email)
                                 secure.setPassword(password)
+                                if (turnUrl.isNotBlank() && turnUser.isNotBlank() && turnPass.isNotBlank()) {
+                                    store.setTurn(turnUrl, turnUser, turnPass)
+                                }
                                 error = null
                                 onDone()
                             }

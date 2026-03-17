@@ -1,0 +1,32 @@
+services:
+  signaling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      # Optional: firebase-admin for push (later)
+      # - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/firebase_sa.json
+    volumes:
+      - ./users.json:/app/users.json
+    restart: unless-stopped
+
+  turn:
+    image: coturn/coturn:4.6.2
+    network_mode: "host"
+    command:
+      - -n
+      - --log-file=stdout
+      - --lt-cred-mech
+      - --realm=justtalk
+      - --user=justtalk:justtalk123
+      - --fingerprint
+      - --no-multicast-peers
+      - --no-cli
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+    restart: unless-stopped
+

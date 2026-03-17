@@ -26,6 +26,7 @@ import org.webrtc.VideoTrack
 class WebRtcClient(
     private val appContext: Context,
     private val eglBase: EglBase,
+    private val iceServers: List<PeerConnection.IceServer>,
     private val onLocalTrack: (VideoTrack) -> Unit,
     private val onRemoteTrack: (VideoTrack) -> Unit,
     private val onIceCandidate: (IceCandidate) -> Unit,
@@ -60,10 +61,6 @@ class WebRtcClient(
             .setVideoEncoderFactory(encoderFactory)
             .setVideoDecoderFactory(decoderFactory)
             .createPeerConnectionFactory()
-
-        val iceServers = listOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
-        )
 
         peerConnection =
             factory.createPeerConnection(

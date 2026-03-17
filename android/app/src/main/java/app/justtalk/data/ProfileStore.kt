@@ -16,12 +16,18 @@ class ProfileStore(private val context: Context) {
     private val kUid = stringPreferencesKey("uid")
     private val kPeerId = stringPreferencesKey("peer_id")
     private val kSignalingUrl = stringPreferencesKey("signaling_url")
+    private val kTurnUrl = stringPreferencesKey("turn_url")
+    private val kTurnUser = stringPreferencesKey("turn_user")
+    private val kTurnPass = stringPreferencesKey("turn_pass")
 
     val email: Flow<String?> = context.dataStore.data.map { it[kEmail] }
     val nickname: Flow<String?> = context.dataStore.data.map { it[kNickname] }
     val uid: Flow<String?> = context.dataStore.data.map { it[kUid] }
     val peerId: Flow<String> = context.dataStore.data.map { it[kPeerId] ?: UUID.randomUUID().toString() }
     val signalingUrl: Flow<String> = context.dataStore.data.map { it[kSignalingUrl] ?: "ws://10.0.2.2:8080" }
+    val turnUrl: Flow<String?> = context.dataStore.data.map { it[kTurnUrl] }
+    val turnUser: Flow<String?> = context.dataStore.data.map { it[kTurnUser] }
+    val turnPass: Flow<String?> = context.dataStore.data.map { it[kTurnPass] }
 
     suspend fun setEmail(email: String) {
         context.dataStore.edit { it[kEmail] = email.trim() }
@@ -49,6 +55,14 @@ class ProfileStore(private val context: Context) {
 
     suspend fun setSignalingUrl(url: String) {
         context.dataStore.edit { it[kSignalingUrl] = url.trim() }
+    }
+
+    suspend fun setTurn(url: String, user: String, pass: String) {
+        context.dataStore.edit {
+            it[kTurnUrl] = url.trim()
+            it[kTurnUser] = user.trim()
+            it[kTurnPass] = pass
+        }
     }
 }
 
