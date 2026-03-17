@@ -207,7 +207,9 @@ fun CallScreen(
                                 pendingRemoteTrack = track
                                 remoteRenderer?.let { track.addSink(it) }
                             },
-                            onIceCandidate = { c -> s.sendSignal(targetPeerId, WebRtcClient.iceToJson(c)) },
+                            onIceCandidateCallback = { c ->
+                                s.sendSignal(targetPeerId, WebRtcClient.iceToJson(c))
+                            },
                             onConnectionState = { st -> status = "Состояние: $st" },
                             onDataChannel = { dc -> dataChannel = dc }
                         )
