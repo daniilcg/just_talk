@@ -91,7 +91,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // WebRTC
-    implementation("org.webrtc:google-webrtc:1.0.32006")
+    // WebRTC (MavenCentral; replaces deprecated org.webrtc:google-webrtc)
+    implementation("io.github.webrtc-sdk:android:144.7559.01")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
