@@ -1,6 +1,7 @@
 package app.justtalk.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.justtalk.core.config.RemoteConfig
@@ -51,6 +56,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import app.justtalk.ui.theme.JustTalkBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,6 +166,7 @@ fun HomeScreen(
         }
     }
 
+    JustTalkBackground {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("JustTalk") },
@@ -177,118 +184,148 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Top
         ) {
             // Header
-            Row(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
             ) {
-                Column {
-                    Text("Контакты")
-                    Spacer(Modifier.height(4.dp))
-                    Text("Ты: $nickname  •  UID: $uid")
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Контакты", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Ты: $nickname  •  UID: $uid", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(directoryStatus, style = MaterialTheme.typography.bodyMedium)
                 }
-                Text(directoryStatus)
             }
 
             Spacer(Modifier.height(16.dp))
 
             if (!UrlValidators.isValidSignalingUrl(signalingUrl)) {
-                Text("Сервер сейчас недоступен. Нажми “Обновить сервер” или открой настройки.")
-                Spacer(Modifier.height(10.dp))
-                Row {
-                    Button(onClick = { refreshServerNow() }) { Text("Обновить сервер") }
-                    Spacer(Modifier.width(12.dp))
-                    OutlinedButton(onClick = onOpenSettings) { Text("Настройки") }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text("Сервер сейчас недоступен.", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(6.dp))
+                        Text("Нажми “Обновить сервер” или открой настройки.", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(10.dp))
+                        Row {
+                            Button(onClick = { refreshServerNow() }) { Text("Обновить сервер") }
+                            Spacer(Modifier.width(12.dp))
+                            OutlinedButton(onClick = onOpenSettings) { Text("Настройки") }
+                        }
+                    }
                 }
+                Spacer(Modifier.height(10.dp))
                 Spacer(Modifier.height(18.dp))
             }
 
             // Search
-            OutlinedTextField(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                value = friendQuery,
-                onValueChange = { friendQuery = it.trim() },
-                label = { Text("Поиск по UIN/нику") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                singleLine = true
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    enabled = friendQuery.length >= 3 && session != null,
-                    onClick = {
-                        lookedUp = true
-                        foundUid = null
-                        foundOnlinePeerId = null
-                        friendAddedStatus = null
-                        val q = friendQuery.trim().lowercase()
-                        // UID == nickname handle (server supports legacy numeric too)
-                        session?.lookupUid(q)
-                    }
-                ) { Text("Найти") }
-                Spacer(Modifier.width(12.dp))
-                if (foundUid != null) {
-                    OutlinedButton(
-                        onClick = {
-                            val u = foundUid ?: return@OutlinedButton
-                            scope.launch {
-                                friendsStore.add(u)
-                                friendAddedStatus = "Добавлено"
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Поиск", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = friendQuery,
+                        onValueChange = { friendQuery = it },
+                        label = { Text("UIN / ник") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Button(
+                            enabled = friendQuery.trim().length >= 3 && session != null,
+                            onClick = {
+                                lookedUp = true
+                                foundUid = null
+                                foundOnlinePeerId = null
+                                friendAddedStatus = null
+                                val q = friendQuery.trim().lowercase()
+                                session?.lookupUid(q)
                             }
-                        }
-                    ) { Text("Добавить") }
-                }
-            }
-            if (lookedUp) {
-                Spacer(Modifier.height(8.dp))
-                when {
-                    foundUid != null -> {
-                        val online = foundOnlinePeerId != null
-                        Text("Найден: $foundUid" + if (online) " (онлайн)" else " (оффлайн)")
-                        if (friendAddedStatus != null) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(friendAddedStatus!!)
+                        ) { Text("Найти") }
+                        Spacer(Modifier.width(12.dp))
+                        if (foundUid != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    val u = foundUid ?: return@OutlinedButton
+                                    scope.launch {
+                                        friendsStore.add(u)
+                                        friendAddedStatus = "Добавлено"
+                                    }
+                                }
+                            ) { Text("Добавить") }
                         }
                     }
-                    else -> Text("Не найдено.")
+                    if (lookedUp) {
+                        Spacer(Modifier.height(8.dp))
+                        when {
+                            foundUid != null -> {
+                                val online = foundOnlinePeerId != null
+                                Text(
+                                    "Найден: $foundUid" + if (online) " (онлайн)" else " (оффлайн)",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (friendAddedStatus != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(friendAddedStatus!!, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                            else -> Text("Не найдено.", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
                 }
             }
+            Spacer(Modifier.height(10.dp))
 
             Spacer(Modifier.height(18.dp))
 
             // Contacts list
             if (friends.isEmpty()) {
-                Text("Контактов пока нет. Найди друга и нажми “Добавить”.")
+                Text("Контактов пока нет. Найди друга и нажми “Добавить”.", style = MaterialTheme.typography.bodyLarge)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(friends) { f ->
-                        Row(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onOpenChat(f) }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(vertical = 7.dp)
+                                .clickable { onOpenChat(f) },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
                         ) {
-                            Column {
-                                Text("UID: $f")
-                                Spacer(Modifier.height(2.dp))
-                                Text("Нажми чтобы открыть чат")
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedButton(
-                                    onClick = { session?.lookupUid(f) }
-                                ) { Text("Пинг") }
-                                Spacer(Modifier.width(8.dp))
-                                OutlinedButton(
-                                    onClick = { scope.launch { friendsStore.remove(f) } }
-                                ) { Text("Удалить") }
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(f, style = MaterialTheme.typography.titleMedium)
+                                    Spacer(Modifier.height(2.dp))
+                                    Text("Нажми, чтобы открыть чат", style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedButton(onClick = { session?.lookupUid(f) }) { Text("Пинг") }
+                                    Spacer(Modifier.width(8.dp))
+                                    OutlinedButton(onClick = { scope.launch { friendsStore.remove(f) } }) { Text("Удалить") }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
     }
 }
 

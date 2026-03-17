@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +40,7 @@ import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
+import app.justtalk.ui.theme.JustTalkBackground
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -94,6 +99,7 @@ fun AuthScreen(
         refreshConfig()
     }
 
+    JustTalkBackground {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("JustTalk") },
@@ -108,6 +114,11 @@ fun AuthScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -123,7 +134,15 @@ fun AuthScreen(
                 ) { Text("Вход") }
             }
             Spacer(Modifier.height(8.dp))
-            Text(if (mode == Mode.Signup) "Регистрация: сервер выдаст UID (как UIN)" else "Вход: введи UID и пароль")
+            Text(
+                if (mode == Mode.Signup) "Регистрация" else "Вход",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (mode == Mode.Signup) "UIN = твой ник (латиница). Пароль только у тебя." else "Введи UIN и пароль.",
+                style = MaterialTheme.typography.bodyMedium
+            )
             Spacer(Modifier.height(16.dp))
             if (mode == Mode.Login) {
                 OutlinedTextField(
@@ -133,7 +152,8 @@ fun AuthScreen(
                     label = { Text("UIN/ник (например justtalk123)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     singleLine = true,
-                    enabled = ready
+                    enabled = ready,
+                    shape = RoundedCornerShape(14.dp)
                 )
                 Spacer(Modifier.height(12.dp))
             } else {
@@ -144,7 +164,8 @@ fun AuthScreen(
                     label = { Text("UIN/ник (уникальный, min 3)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     singleLine = true,
-                    enabled = ready
+                    enabled = ready,
+                    shape = RoundedCornerShape(14.dp)
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -154,7 +175,8 @@ fun AuthScreen(
                     label = { Text("Email (опционально)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     singleLine = true,
-                    enabled = ready
+                    enabled = ready,
+                    shape = RoundedCornerShape(14.dp)
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -166,19 +188,20 @@ fun AuthScreen(
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
-                enabled = ready
+                enabled = ready,
+                shape = RoundedCornerShape(14.dp)
             )
             Spacer(Modifier.height(12.dp))
             val configured = UrlValidators.isValidSignalingUrl(signalingUrl)
             val serverLabel = if (configured) signalingUrl else "не настроен"
             // Hidden from normal users; shown only as a simple status.
             val serverStatus = if (serverLabel == "не настроен") "не доступен" else "подключен"
-            Text("Сервер: $serverStatus")
+            Text("Сервер: $serverStatus", style = MaterialTheme.typography.bodyMedium)
             if (configError != null) {
                 Spacer(Modifier.height(8.dp))
-                Text("Не удалось загрузить настройки сервера.")
+                Text("Не удалось загрузить настройки сервера.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                Text("Причина: $configError")
+                Text("Причина: $configError", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
@@ -193,7 +216,7 @@ fun AuthScreen(
             }
             if (error != null) {
                 Spacer(Modifier.height(10.dp))
-                Text("Ошибка: $error")
+                Text("Ошибка: $error", style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(20.dp))
             Button(
@@ -256,7 +279,10 @@ fun AuthScreen(
             ) {
                 Text(if (mode == Mode.Signup) "Зарегистрироваться" else "Войти")
             }
+                }
+            }
         }
+    }
     }
 }
 

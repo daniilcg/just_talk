@@ -16,14 +16,18 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,12 +42,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import app.justtalk.core.config.UrlValidators
 import app.justtalk.core.chat.ChatMessage
 import app.justtalk.core.chat.DataChannelChat
 import app.justtalk.core.signaling.SignalingClient
 import app.justtalk.core.signaling.SignalingEvent
 import app.justtalk.core.webrtc.WebRtcClient
 import app.justtalk.data.ProfileStore
+import app.justtalk.ui.theme.JustTalkBackground
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -139,9 +145,20 @@ fun CallScreen(
 
     LaunchedEffect(roomId) {
         peerId = store.ensurePeerId()
-        val url = store.signalingUrl.first()
+        val stored = store.signalingUrl.first()
+        val url = UrlValidators.normalizeSignalingUrl(stored)
+        if (url == null) {
+            status = "Ошибка: неверный адрес сервера звонков"
+            signaling = null
+            return@LaunchedEffect
+        }
+
         status = "Подключение к сигналингу…"
-        signaling = SignalingClient(url = url, roomId = roomId, peerId = peerId).also { it.connect() }
+        signaling = SignalingClient(url = url, roomId = roomId, peerId = peerId).also {
+            runCatching { it.connect() }.onFailure { e ->
+                status = "Ошибка: ws_failure (${e.message ?: "connect"})"
+            }
+        }
     }
 
     LaunchedEffect(signaling) {
@@ -244,11 +261,22 @@ fun CallScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-            Text("Room: $roomId")
-            Text("You: ${peerId.take(8)}…")
-            Text(status)
+    JustTalkBackground {
+        Column(modifier = Modifier.fillMaxSize().imePadding().padding(14.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Звонок", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Комната: $roomId", style = MaterialTheme.typography.bodyMedium)
+                    Text("Ты: ${peerId.take(8)}…", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text(status, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
             Spacer(Modifier.height(12.dp))
 
             if (isVideo) {
@@ -256,7 +284,7 @@ fun CallScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(9f / 16f)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp)),
                     factory = {
                         SurfaceViewRenderer(it).apply {
                             init(eglBase.eglBaseContext, null)
@@ -270,10 +298,10 @@ fun CallScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(260.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Аудио звонок")
+                    Text("Аудио звонок", style = MaterialTheme.typography.titleMedium)
                 }
             }
 
@@ -286,7 +314,9 @@ fun CallScreen(
             ) {
                 if (isVideo) {
                     AndroidView(
-                        modifier = Modifier.size(120.dp, 160.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier
+                            .size(120.dp, 160.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(16.dp)),
                         factory = {
                             SurfaceViewRenderer(it).apply {
                                 init(eglBase.eglBaseContext, null)
@@ -300,24 +330,28 @@ fun CallScreen(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Row {
-                        OutlinedButton(onClick = {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                    ) {
+                        Row(modifier = Modifier.padding(10.dp)) {
+                            OutlinedButton(onClick = {
                             speakerOn = !speakerOn
                             val am = context.getSystemService(AudioManager::class.java)
                             runCatching { am?.mode = AudioManager.MODE_IN_COMMUNICATION }
                             runCatching { am?.isSpeakerphoneOn = speakerOn }
                         }) { Text(if (speakerOn) "Speaker" else "Earpiece") }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = {
+                            Spacer(Modifier.width(8.dp))
+                            OutlinedButton(onClick = {
                             micOn = !micOn
                             webrtc?.toggleMic(micOn)
                         }) { Text(if (micOn) "Mic ON" else "Mic OFF") }
-                        if (isVideo) {
-                            Spacer(Modifier.width(8.dp))
-                            OutlinedButton(onClick = {
+                            if (isVideo) {
+                                Spacer(Modifier.width(8.dp))
+                                OutlinedButton(onClick = {
                                 camOn = !camOn
                                 webrtc?.toggleCamera(camOn)
-                            }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
+                                }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -331,41 +365,50 @@ fun CallScreen(
             }
 
             Spacer(Modifier.height(12.dp))
-            Text(if (chat != null) "Чат (P2P)" else "Чат: подключение…")
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(8.dp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
             ) {
-                val last = messages.takeLast(8)
-                for (m in last) {
-                    Text(
-                        text = (if (m.direction == ChatMessage.Direction.Out) "Ты: " else "Друг: ") + m.text,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    modifier = Modifier.weight(1f),
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    label = { Text("Сообщение") },
-                    singleLine = true
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    enabled = chat != null && messageText.isNotBlank(),
-                    onClick = {
-                        val text = messageText.trim()
-                        messageText = ""
-                        scope.launch { chat?.sendText(text) }
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(if (chat != null) "Чат во время звонка" else "Чат: подключение…", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f), RoundedCornerShape(14.dp))
+                            .padding(10.dp)
+                    ) {
+                        val last = messages.takeLast(8)
+                        for (m in last) {
+                            Text(
+                                text = (if (m.direction == ChatMessage.Direction.Out) "Ты: " else "Друг: ") + m.text,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                        }
                     }
-                ) { Text("Отпр.") }
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            modifier = Modifier.weight(1f),
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            label = { Text("Сообщение") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            enabled = chat != null && messageText.isNotBlank(),
+                            onClick = {
+                                val text = messageText.trim()
+                                messageText = ""
+                                scope.launch { chat?.sendText(text) }
+                            }
+                        ) { Text("Отпр.") }
+                    }
+                }
             }
         }
     }

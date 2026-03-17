@@ -1,11 +1,17 @@
 package app.justtalk.ui.theme
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -86,6 +92,27 @@ fun JustTalkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (dark) Dark else Light,
         typography = JustTalkTypography,
+        content = content
+    )
+}
+
+@Composable
+fun JustTalkBackground(content: @Composable BoxScope.() -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val dark = isSystemInDarkTheme()
+    val overlay = Brush.linearGradient(
+        colors = listOf(
+            BrandPurple.copy(alpha = if (dark) 0.20f else 0.18f),
+            BrandCyan.copy(alpha = if (dark) 0.14f else 0.14f),
+            BrandGreen.copy(alpha = if (dark) 0.10f else 0.10f),
+            BrandOrange.copy(alpha = if (dark) 0.10f else 0.10f)
+        )
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(cs.background)
+            .background(overlay),
         content = content
     )
 }

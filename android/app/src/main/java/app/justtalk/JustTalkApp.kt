@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.core.directory.DirectorySession
 import app.justtalk.data.ProfileStore
+import app.justtalk.push.NotificationHelper
 import app.justtalk.ui.theme.JustTalkTheme
 import app.justtalk.ui.screens.AuthScreen
 import app.justtalk.ui.screens.CallScreen
@@ -37,6 +38,19 @@ fun JustTalkApp(initialRoomId: String?) {
             session.events.collectLatest { ev ->
                 if (ev is DirectoryEvent.Invite) {
                     incomingInvite = ev.fromPeerId to ev.roomId
+                    NotificationHelper.showIncomingCall(
+                        context = context.applicationContext,
+                        from = ev.fromPeerId,
+                        roomId = ev.roomId
+                    )
+                }
+                if (ev is DirectoryEvent.Msg) {
+                    // Show a lightweight notification while app is running.
+                    NotificationHelper.showMessage(
+                        context = context.applicationContext,
+                        fromUid = ev.fromUid,
+                        text = ev.text
+                    )
                 }
             }
         }

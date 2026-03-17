@@ -1,18 +1,23 @@
 package app.justtalk.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,11 +29,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.justtalk.core.directory.DirectoryEvent
@@ -37,6 +44,7 @@ import app.justtalk.data.ChatFileStore
 import app.justtalk.data.ChatLine
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
+import app.justtalk.ui.theme.JustTalkBackground
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,7 +65,7 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
 
     val messages = remember { mutableStateListOf<String>() }
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable(uid) { mutableStateOf("") }
     var status by remember { mutableStateOf("Подключение…") }
 
     var myUid by remember { mutableStateOf("") }
@@ -92,70 +100,120 @@ fun ChatScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Чат: $uid") },
-            navigationIcon = {
-                TextButton(onClick = onBack) { Text("Назад") }
-            },
-            actions = {
-                TextButton(onClick = {
-                    val room = UUID.randomUUID().toString().substring(0, 8)
-                    // Invite friend then start call
-                    session.inviteUid(toUid = uid, roomId = room)
-                    onStartCall(room, false)
-                }) { Text("Аудио") }
-                TextButton(onClick = {
-                    val room = UUID.randomUUID().toString().substring(0, 8)
-                    session.inviteUid(toUid = uid, roomId = room)
-                    onStartCall(room, true)
-                }) { Text("Видео") }
-            }
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(status)
-            Spacer(Modifier.height(8.dp))
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                items(messages) { m ->
-                    Text(m)
-                    Spacer(Modifier.height(6.dp))
+    JustTalkBackground {
+        Column(modifier = Modifier.fillMaxSize().imePadding()) {
+            TopAppBar(
+                title = { Text(uid) },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("Назад") }
+                },
+                actions = {
+                    TextButton(onClick = {
+                        val room = UUID.randomUUID().toString().substring(0, 8)
+                        session.inviteUid(toUid = uid, roomId = room)
+                        onStartCall(room, false)
+                    }) { Text("Аудио") }
+                    TextButton(onClick = {
+                        val room = UUID.randomUUID().toString().substring(0, 8)
+                        session.inviteUid(toUid = uid, roomId = room)
+                        onStartCall(room, true)
+                    }) { Text("Видео") }
                 }
-            }
+            )
 
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    modifier = Modifier.weight(1f),
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("Сообщение") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                    singleLine = true
-                )
-                Spacer(Modifier.width(10.dp))
-                Button(
-                    enabled = text.isNotBlank(),
-                    onClick = {
-                        val t = text.trim()
-                        text = ""
-                        scope.launch {
-                            fileStore.append(uid, ChatLine(dir = "out", text = t, tsMs = System.currentTimeMillis()))
-                            messages.add("Я: $t")
-                            session.sendMsg(toUid = uid, text = t)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Статус", style = MaterialTheme.typography.labelLarge)
+                        Text(status, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f))
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp)
+                    ) {
+                        items(messages) { m ->
+                            val isMe = m.startsWith("Я:")
+                            val bubbleColor =
+                                if (isMe) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                            val align = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                Card(
+                                    modifier = Modifier
+                                        .align(align)
+                                        .padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = bubbleColor),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text(
+                                        m,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                     }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
                 ) {
-                    Text("Отправить")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier.weight(1f),
+                            value = text,
+                            onValueChange = { text = it },
+                            label = { Text("Сообщение") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Button(
+                            enabled = text.isNotBlank(),
+                            onClick = {
+                                val t = text.trim()
+                                text = ""
+                                scope.launch {
+                                    fileStore.append(uid, ChatLine(dir = "out", text = t, tsMs = System.currentTimeMillis()))
+                                    messages.add("Я: $t")
+                                    session.sendMsg(toUid = uid, text = t)
+                                }
+                            }
+                        ) {
+                            Text("Отправить")
+                        }
+                    }
                 }
             }
         }
