@@ -27,3 +27,6 @@ gradle-build.log
 # Downloaded GitHub Actions artifacts
 justtalk-debug-apk/
 
+# Local notes
+TODO.txt
+
