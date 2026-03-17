@@ -81,6 +81,10 @@ export class UserStore {
       emailLower,
       passwordHash,
       fcmToken: null,
+      // Public profile fields (no server-side media in free version)
+      displayName: "",
+      bio: "",
+      status: "online", // online | dnd
       createdAtMs: Date.now()
     };
     this.persist();
@@ -103,7 +107,10 @@ export class UserStore {
       nickname: u.nickname,
       email: u.email ?? null,
       passwordHash: u.passwordHash ?? null,
-      fcmToken: u.fcmToken ?? null
+      fcmToken: u.fcmToken ?? null,
+      displayName: u.displayName ?? "",
+      bio: u.bio ?? "",
+      status: u.status ?? "online"
     };
   }
 
@@ -118,7 +125,10 @@ export class UserStore {
           nickname: u.nickname,
           email: u.email ?? null,
           passwordHash: u.passwordHash ?? null,
-          fcmToken: u.fcmToken ?? null
+          fcmToken: u.fcmToken ?? null,
+          displayName: u.displayName ?? "",
+          bio: u.bio ?? "",
+          status: u.status ?? "online"
         };
     }
     return null;
@@ -130,6 +140,29 @@ export class UserStore {
     const u = this.db.users[id];
     if (!u) return false;
     u.fcmToken = t || null;
+    this.persist();
+    return true;
+  }
+
+  setProfile(uid, { displayName, bio }) {
+    const id = String(uid ?? "").trim();
+    const u = this.db.users[id];
+    if (!u) return false;
+    const dn = String(displayName ?? "").trim().slice(0, 40);
+    const b = String(bio ?? "").trim().slice(0, 140);
+    u.displayName = dn;
+    u.bio = b;
+    this.persist();
+    return true;
+  }
+
+  setStatus(uid, status) {
+    const id = String(uid ?? "").trim();
+    const u = this.db.users[id];
+    if (!u) return false;
+    const s = String(status ?? "").trim();
+    if (!["online", "dnd"].includes(s)) return false;
+    u.status = s;
     this.persist();
     return true;
   }

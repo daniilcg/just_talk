@@ -100,7 +100,7 @@ fun JustTalkApp(initialRoomId: String?) {
                 )
             }
             composable("settings") {
-                SettingsScreen(onBack = { nav.popBackStack() })
+                SettingsScreen(onBack = { nav.popBackStack() }, session = session)
             }
             composable("chat/{uid}") { backStackEntry ->
                 val chatUid = backStackEntry.arguments?.getString("uid").orEmpty()

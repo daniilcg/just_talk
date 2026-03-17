@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import app.justtalk.core.directory.DirectorySession
 import app.justtalk.core.config.UrlValidators
 import app.justtalk.data.ProfileStore
 import kotlinx.coroutines.flow.first
@@ -44,7 +45,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val scope = rememberCoroutineScope()
@@ -192,6 +193,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                             store.setTurn(turnUrl, turnUser, turnPass)
                         }
                         store.setProfile(displayName = displayName, bio = bio, avatarUri = avatarUri)
+                        // Push profile to server so others can see it (text-only free version).
+                        session.setProfile(displayName = displayName, bio = bio)
                         saved = "Сохранено"
                         onBack()
                     }

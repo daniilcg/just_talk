@@ -168,11 +168,11 @@ wss.on("connection", (ws) => {
       }
       const u = userStore.getByUid(uid);
       if (!u) {
-        send(ws, { type: "lookup_uid_result", uid, nickname: null, onlinePeerId: null });
+        send(ws, { type: "lookup_uid_result", uid, nickname: null, onlinePeerId: null, displayName: null, bio: null, status: null });
         return;
       }
       const onlinePeerId = onlineByUid.get(u.uid) ?? null;
-      send(ws, { type: "lookup_uid_result", uid: u.uid, nickname: u.nickname, onlinePeerId });
+      send(ws, { type: "lookup_uid_result", uid: u.uid, nickname: u.nickname, onlinePeerId, displayName: u.displayName ?? "", bio: u.bio ?? "", status: u.status ?? "online" });
       return;
     }
 
@@ -184,11 +184,11 @@ wss.on("connection", (ws) => {
       }
       const u = userStore.getByNickname(nickname);
       if (!u) {
-        send(ws, { type: "lookup_nickname_result", nickname, uid: null, onlinePeerId: null });
+        send(ws, { type: "lookup_nickname_result", nickname, uid: null, onlinePeerId: null, displayName: null, bio: null, status: null });
         return;
       }
       const onlinePeerId = onlineByUid.get(u.uid) ?? null;
-      send(ws, { type: "lookup_nickname_result", nickname: u.nickname, uid: u.uid, onlinePeerId });
+      send(ws, { type: "lookup_nickname_result", nickname: u.nickname, uid: u.uid, onlinePeerId, displayName: u.displayName ?? "", bio: u.bio ?? "", status: u.status ?? "online" });
       return;
     }
 
@@ -258,6 +258,29 @@ wss.on("connection", (ws) => {
       }
       userStore.setFcmToken(state.uid, token);
       send(ws, { type: "set_fcm_token_ok" });
+      return;
+    }
+
+    if (msg.type === "set_profile") {
+      if (!state.uid) {
+        send(ws, { type: "error", code: "not_logged_in" });
+        return;
+      }
+      const displayName = String(msg.displayName ?? "");
+      const bio = String(msg.bio ?? "");
+      const ok = userStore.setProfile(state.uid, { displayName, bio });
+      send(ws, { type: "set_profile_ok", ok });
+      return;
+    }
+
+    if (msg.type === "set_status") {
+      if (!state.uid) {
+        send(ws, { type: "error", code: "not_logged_in" });
+        return;
+      }
+      const status = String(msg.status ?? "");
+      const ok = userStore.setStatus(state.uid, status);
+      send(ws, { type: "set_status_ok", ok });
       return;
     }
 

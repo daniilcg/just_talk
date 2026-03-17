@@ -99,6 +99,14 @@ class DirectorySession(
         client?.sendMsgUid(toUid = toUid, text = text)
     }
 
+    fun setProfile(displayName: String, bio: String) {
+        client?.setProfile(displayName = displayName, bio = bio)
+    }
+
+    fun setStatus(status: String) {
+        client?.setStatus(status)
+    }
+
     fun close() {
         client?.close()
         client = null
