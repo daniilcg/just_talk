@@ -1,5 +1,5 @@
 {
-  "signalingUrl": "https://projects-briefly-sarah-baseball.trycloudflare.com",
+  "signalingUrl": "wss://projects-briefly-sarah-baseball.trycloudflare.com",
   "turn": null
 }
 
