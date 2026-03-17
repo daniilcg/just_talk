@@ -33,7 +33,7 @@ jobs:
           sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
           set -o pipefail
-          ./gradlew --no-daemon assembleDebug --stacktrace | tee ../gradle-build.log
+          ./gradlew --no-daemon assembleDebug --stacktrace --info 2>&1 | tee ../gradle-build.log
 
       - name: Rename APK
         run: |
