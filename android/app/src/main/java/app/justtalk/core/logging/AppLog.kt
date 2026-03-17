@@ -74,6 +74,19 @@ object AppLog {
         }
     }
 
+    fun currentLogPathOrNull(): String? =
+        if (::logFile.isInitialized) runCatching { logFile.absolutePath }.getOrNull() else null
+
+    fun exportToUri(context: Context, uri: android.net.Uri): Boolean {
+        if (!::logFile.isInitialized) return false
+        return runCatching {
+            context.contentResolver.openOutputStream(uri, "w")!!.use { out ->
+                logFile.inputStream().use { it.copyTo(out) }
+            }
+            true
+        }.getOrDefault(false)
+    }
+
     fun d(tag: String, msg: String) = enqueue(format("D/$tag", msg))
     fun i(tag: String, msg: String) = enqueue(format("I/$tag", msg))
     fun w(tag: String, msg: String, e: Throwable? = null) = enqueue(format("W/$tag", msg, e))

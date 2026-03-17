@@ -47,11 +47,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.justtalk.core.directory.DirectorySession
 import app.justtalk.core.config.UrlValidators
+import app.justtalk.core.logging.AppLog
 import app.justtalk.data.ProfileStore
 import app.justtalk.ui.theme.JustTalkBackground
 import app.justtalk.core.logging.UiDebug
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +75,16 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
     var avatarUri by remember { mutableStateOf<String?>(null) }
     var saved by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+    val logPath = remember { AppLog.currentLogPathOrNull() }
+
+    val exportLogs = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        if (uri != null) {
+            val ok = AppLog.exportToUri(context, uri)
+            saved = if (ok) "Лог экспортирован" else "Не удалось экспортировать лог"
+        }
+    }
 
     val pickAvatar = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -225,6 +239,29 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp)
                         )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Диагностика", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Лог: ${logPath ?: "не инициализирован"}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                val name = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+                                exportLogs.launch("justtalk-$name.log")
+                            }
+                        ) { Text("Экспортировать лог в Documents") }
                     }
                 }
 
