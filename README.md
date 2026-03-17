@@ -50,6 +50,14 @@ cloudflared tunnel --url http://localhost:8080
 Cloudflare даст URL вида `https://xxxxx.trycloudflare.com`.
 В приложении у друзей укажи **Signaling URL** как **`wss://xxxxx.trycloudflare.com`**.
 
+#### Чтобы друзья ничего не вводили
+
+В репозитории есть файл `config/justtalk.json`. Туда впиши:
+
+- `signalingUrl`: `wss://xxxxx.trycloudflare.com`
+
+Затем запушь — приложение само подтянет конфиг при запуске.
+
 ### Вариант 2: Проброс порта на роутере (без Cloudflare)
 
 - Пробрось порт **8080/TCP** на свой ПК.

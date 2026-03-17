@@ -27,13 +27,16 @@ import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import app.justtalk.core.config.RemoteConfig
 import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +72,13 @@ fun AuthScreen(
         }
         nickname = n.orEmpty()
         email = e.orEmpty()
-        signalingUrl = url
+        // Auto-config from GitHub raw JSON for "friends don't configure anything"
+        val remote = withContext(Dispatchers.IO) { RemoteConfig.fetch() }
+        val resolvedUrl = remote?.signalingUrl ?: url
+        signalingUrl = resolvedUrl
+        if (resolvedUrl.startsWith("ws")) {
+            store.setSignalingUrl(resolvedUrl)
+        }
         turnUrl = tUrl.orEmpty()
         turnUser = tUser.orEmpty()
         turnPass = tPass.orEmpty()
@@ -123,15 +132,7 @@ fun AuthScreen(
                 enabled = ready
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = signalingUrl,
-                onValueChange = { signalingUrl = it },
-                label = { Text("Signaling URL (ws://...)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                singleLine = true,
-                enabled = ready
-            )
+            Text("Сервер: ${if (signalingUrl.startsWith(\"ws\")) signalingUrl else \"не настроен\"}")
             Spacer(Modifier.height(12.dp))
             Text("TURN (если у друзей не соединяется, можно настроить позже)")
             Spacer(Modifier.height(8.dp))

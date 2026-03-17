@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.justtalk.BuildConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -24,7 +25,7 @@ class ProfileStore(private val context: Context) {
     val nickname: Flow<String?> = context.dataStore.data.map { it[kNickname] }
     val uid: Flow<String?> = context.dataStore.data.map { it[kUid] }
     val peerId: Flow<String> = context.dataStore.data.map { it[kPeerId] ?: UUID.randomUUID().toString() }
-    val signalingUrl: Flow<String> = context.dataStore.data.map { it[kSignalingUrl] ?: "ws://10.0.2.2:8080" }
+    val signalingUrl: Flow<String> = context.dataStore.data.map { it[kSignalingUrl] ?: "wss://not-configured.invalid" }
     val turnUrl: Flow<String?> = context.dataStore.data.map { it[kTurnUrl] }
     val turnUser: Flow<String?> = context.dataStore.data.map { it[kTurnUser] }
     val turnPass: Flow<String?> = context.dataStore.data.map { it[kTurnPass] }

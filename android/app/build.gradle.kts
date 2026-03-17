@@ -16,6 +16,12 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        buildConfigField(
+            "String",
+            "REMOTE_CONFIG_URL",
+            "\"https://raw.githubusercontent.com/daniilcg/just_talk/main/config/justtalk.json\""
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -39,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
