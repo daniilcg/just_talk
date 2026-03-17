@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -289,12 +289,12 @@ fun CallScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Main media area takes remaining space, so controls are always visible.
+            // Main media area has bounded height so controls stay visible on small screens.
             if (isVideo) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .heightIn(min = 240.dp, max = 520.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
                 ) {
                     AndroidView(
@@ -336,7 +336,7 @@ fun CallScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .height(260.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -412,17 +412,18 @@ fun CallScreen(
                         }
                     }
                     Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column {
                         OutlinedTextField(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(),
                             value = messageText,
                             onValueChange = { messageText = it },
                             label = { Text("Сообщение") },
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.height(8.dp))
                         Button(
+                            modifier = Modifier.fillMaxWidth(),
                             enabled = chat != null && messageText.isNotBlank(),
                             onClick = {
                                 val text = messageText.trim()
