@@ -19,6 +19,7 @@ import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
+import org.webrtc.RtpTransceiver
 import org.webrtc.VideoCapturer
 import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
@@ -85,8 +86,8 @@ class WebRtcClient(
 
                     override fun onRenegotiationNeeded() = Unit
                     override fun onAddTrack(receiver: RtpReceiver, mediaStreams: Array<out org.webrtc.MediaStream>) = Unit
-                    override fun onTrack(transceiver: PeerConnection.RtpTransceiver) {
-                        val track = transceiver.receiver.track() ?: return
+                    override fun onTrack(transceiver: RtpTransceiver?) {
+                        val track = transceiver?.receiver?.track() ?: return
                         if (track.kind() == MediaStreamTrack.VIDEO_TRACK_KIND) {
                             (track as? VideoTrack)?.let(onRemoteTrack)
                         }

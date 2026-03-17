@@ -23,7 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -132,7 +132,8 @@ fun AuthScreen(
                 enabled = ready
             )
             Spacer(Modifier.height(12.dp))
-            Text("Сервер: ${if (signalingUrl.startsWith(\"ws\")) signalingUrl else \"не настроен\"}")
+            val serverLabel = if (signalingUrl.startsWith("ws")) signalingUrl else "не настроен"
+            Text("Сервер: $serverLabel")
             Spacer(Modifier.height(12.dp))
             Text("TURN (если у друзей не соединяется, можно настроить позже)")
             Spacer(Modifier.height(8.dp))
