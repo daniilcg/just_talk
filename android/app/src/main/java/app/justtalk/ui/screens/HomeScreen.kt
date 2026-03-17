@@ -78,6 +78,7 @@ fun HomeScreen(
     var friends by remember { mutableStateOf<List<String>>(emptyList()) }
 
     var incomingInvite by remember { mutableStateOf<Pair<String, String>?>(null) } // fromPeerId, roomId
+    var refreshingServer by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         peerId = store.ensurePeerId()
@@ -94,6 +95,33 @@ fun HomeScreen(
         } else {
             directoryStatus = "Сервер не настроен (${remoteErr ?: "no_config"})"
             directory = null
+        }
+    }
+
+    fun refreshServerNow() {
+        if (refreshingServer) return
+        scope.launch {
+            refreshingServer = true
+            directoryStatus = "Обновляем сервер…"
+            try {
+                val saved = store.signalingUrl.first()
+                val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
+                val resolved = remote?.signalingUrl ?: saved
+                signalingUrl = resolved
+
+                if (UrlValidators.isValidSignalingUrl(resolved)) {
+                    store.setSignalingUrl(resolved)
+                    directory?.close()
+                    directory = DirectoryClient(resolved).also { it.connect() }
+                    directoryStatus = "Подключение…"
+                } else {
+                    directory?.close()
+                    directory = null
+                    directoryStatus = "Сервер не настроен (${remoteErr ?: "no_config"})"
+                }
+            } finally {
+                refreshingServer = false
+            }
         }
     }
 
@@ -154,6 +182,9 @@ fun HomeScreen(
         TopAppBar(
             title = { Text("JustTalk") },
             actions = {
+                TextButton(enabled = !refreshingServer, onClick = { refreshServerNow() }) {
+                    Text("Обновить сервер")
+                }
                 TextButton(onClick = onOpenSettings) { Text("Настройки") }
             }
         )
