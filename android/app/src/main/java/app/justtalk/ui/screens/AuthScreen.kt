@@ -144,7 +144,9 @@ fun AuthScreen(
             Text("Сервер: $serverStatus")
             if (configError != null) {
                 Spacer(Modifier.height(8.dp))
-                Text("Не удалось загрузить настройки сервера. Проверь интернет.")
+                Text("Не удалось загрузить настройки сервера.")
+                Spacer(Modifier.height(6.dp))
+                Text("Причина: $configError")
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
