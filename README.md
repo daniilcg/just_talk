@@ -1,39 +1,25 @@
 # JustTalk
 
-Простое Android-приложение для **аудио/видео звонков** и **обмена сообщениями/медиа**, где:
+Minimal Android messenger/caller:
 
-- **История переписки и файлы хранятся только локально на телефонах** (Room + файлы в хранилище приложения).
-- Для соединения устройств через интернет используется **WebRTC**.
-- Для WebRTC почти всегда нужен:
-  - **signaling** (обмен SDP/ICE) — здесь это отдельный *минимальный* WebSocket-сервер, который **не хранит историю**.
-  - **STUN** (можно публичный), а иногда и **TURN** (если NAT/CGNAT) — TURN без сервера/провайдера невозможен.
+- **Audio/video calls** (WebRTC)
+- **Text chat during the call** (WebRTC DataChannel)
+- **No chat/media storage on the server** (everything is local on devices)
 
-Если принципиально “вообще без серверов”, возможен режим **только в одной локальной сети** (LAN discovery) — это будет отдельный вариант, но для интернета всё равно нужен хотя бы signaling.
+Important reality check:
+
+- WebRTC over the Internet still requires **signaling** (SDP/ICE exchange).
+- Reliable connectivity often requires **TURN** (especially mobile networks / CGNAT).
 
 ## Структура
 
-- `android/` — Android приложение (Kotlin, Jetpack Compose, WebRTC).
+- `android/` — Android app (Kotlin, Jetpack Compose, WebRTC).
 - `server/` — signaling server (Node.js, WebSocket).
+- `config/justtalk.json` — remote app config (GitHub raw).
 
-## Быстрый старт (signaling server)
+## Quick start (signaling server)
 
-Требуется Node.js 18+.
-
-```bash
-cd server
-npm install
-npm run dev
-```
-
-По умолчанию сервер стартует на `ws://localhost:8080`.
-
-## “Бесплатный сервер” на твоём ПК (сегодня)
-
-Твой ПК может быть сервером, если он **включён** и у него есть способ принять подключения из интернета.
-
-### Вариант 1 (самый быстрый): Cloudflare Tunnel (без домена, без проброса портов)
-
-1) Запусти сервер:
+Requires Node.js 18+.
 
 ```bash
 cd server
@@ -41,81 +27,80 @@ npm install
 npm run dev
 ```
 
-2) Поставь `cloudflared` и запусти:
+By default it starts on `ws://localhost:8080`.
+
+## “Free server” on your PC (today)
+
+Your PC can act as the server if it is **kept online** and is reachable from the Internet.
+
+### Option 1 (recommended): Cloudflare Tunnel (no domain, no router access)
+
+1) Start the signaling server:
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+2) Install `cloudflared` and run:
 
 ```bash
 cloudflared tunnel --url http://localhost:8080
 ```
 
-Cloudflare даст URL вида `https://xxxxx.trycloudflare.com`.
-В приложении у друзей укажи **Signaling URL** как **`wss://xxxxx.trycloudflare.com`**.
+Cloudflare will print a URL like `https://xxxxx.trycloudflare.com`.
 
-#### Чтобы друзья ничего не вводили
+#### Make friends install-and-go (no settings)
 
-В репозитории есть файл `config/justtalk.json`. Туда впиши:
+Update `config/justtalk.json` in this repo:
 
 - `signalingUrl`: `wss://xxxxx.trycloudflare.com`
 
-Затем запушь — приложение само подтянет конфиг при запуске.
+Push the change. The app fetches this config on startup and uses it automatically.
 
-### Вариант 2: Проброс порта на роутере (без Cloudflare)
+### Option 2: Router port-forwarding (requires router access)
 
-- Пробрось порт **8080/TCP** на свой ПК.
-- Узнай свой публичный IP.
-- Друзья ставят `ws://<твoй_ip>:8080` (или `wss://` если ты настроил TLS через прокси).
+- Forward **8080/TCP** to your PC.
+- Friends use `ws://<your_public_ip>:8080` (or `wss://` if you add TLS via a reverse proxy).
 
-### TURN (важно для связи через мобильные сети)
+### TURN (important for mobile networks)
 
-Если у кого-то не соединяется или чёрный экран — почти всегда нужен **TURN**.
-В `server/docker-compose.yml` есть готовый `coturn`.
+If calls fail to connect / black screen — you likely need **TURN**.
+There is a ready-to-run `coturn` in `server/docker-compose.yml`.
 
-- Нужен проброс **3478/TCP+UDP** и диапазона UDP портов (в compose: **49160–49200/UDP**) на твой ПК.
-- В приложении укажи:
-  - TURN URL: `turn:<твой_ip>:3478`
+- You must forward **3478/TCP+UDP** and UDP ports **49160–49200/UDP** to your PC.
+- In the app (optional settings):
+  - TURN URL: `turn:<your_public_ip>:3478`
   - TURN user: `justtalk`
   - TURN pass: `justtalk123`
 
-Запуск TURN (Docker Desktop должен быть установлен):
+Run TURN (requires Docker Desktop):
 
 ```bash
 cd server
 docker compose up -d --build
 ```
 
-### Push (FCM) для входящих звонков
+### Push (FCM) for incoming calls
 
-Чтобы работали push-уведомления на входящий звонок (когда приложение закрыто), нужно:
+For incoming call push notifications (when the app is closed), you need:
 
-- **Android**: добавить файл Firebase `google-services.json` в `android/app/google-services.json`
-- **Server**: настроить `firebase-admin`:
-  - в Firebase Console → Project Settings → Service accounts → сгенерировать ключ
-  - задать переменную окружения `GOOGLE_APPLICATION_CREDENTIALS` на путь к JSON ключу
+- **Android**: add Firebase `google-services.json` to `android/app/google-services.json`
+- **Server**: configure `firebase-admin`:
+  - Firebase Console → Project Settings → Service accounts → generate a key
+  - set `GOOGLE_APPLICATION_CREDENTIALS` env var to the JSON key path
 
-Без этой настройки звонки работают только когда оба онлайн и подключены к сигналингу.
+Without this, calls/invites work only while both users are online.
 
 ## Android
 
-Открой `android/` в Android Studio, дождись Gradle Sync, затем запусти на устройстве/эмуляторе.
+Open `android/` in Android Studio, wait for Gradle sync, then run on a device/emulator.
 
-### Настройка signaling URL
+The app auto-loads the signaling URL from `config/justtalk.json` (GitHub raw), so friends do not have to configure anything.
 
-- **Эмулятор Android**: оставь значение по умолчанию `ws://10.0.2.2:8080` (это “localhost” твоего ПК).
-- **Реальный телефон в той же Wi‑Fi сети**: укажи IP твоего ПК, например `ws://192.168.1.10:8080`.
+## Limitations
 
-### Как позвонить
-
-- **Вариант A (поиск по никнейму)**:
-  - Оба пользователя должны быть **онлайн** (приложение открыто) и подключены к **одинаковому signaling URL**.
-  - При регистрации каждый задаёт **никнейм**.
-  - На главном экране введи никнейм друга → **Поиск** → **Позвонить**.
-  - У друга появится приглашение, он нажмёт **Принять**.
-- **Вариант B (ручной Room ID)**:
-  - На обоих телефонах зайди в приложение и введи **одинаковый Room ID**.
-  - Первый участник жмёт **“Позвонить”**, второй просто заходит в ту же комнату — соединение поднимется автоматически.
-
-## Важные ограничения
-
-- **UID (UIN)**: при регистрации сервер выдаёт уникальный номер вида `0000001`, `0000002`, … и хранит его в `server/users.json`. Это нужно, чтобы номера не сбрасывались при перезапуске сервера.
-- **Поиск**: можно искать по **UID** или по **никнейму**. Для звонка друг должен быть **онлайн** (приложение открыто), иначе инвайт не доставить без push.
-- **Email**: опционален и не подтверждается (для верификации нужен почтовый сервис).
-- **TURN**: без TURN некоторые пользователи не смогут созвониться/передать медиа из-за NAT/CGNAT. Для полноценной работы в интернете потребуется подключить TURN (например coturn) или провайдера.
+- **UID (UIN)**: the server issues sequential IDs (`0000001`, `0000002`, …) and stores them in `server/users.json` so they survive restarts.
+- **Calls without router access**: without TURN, some networks will not connect (especially mobile networks).
+- **Offline messages**: the current chat is P2P DataChannel (no store-and-forward).
