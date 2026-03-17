@@ -8,12 +8,13 @@ plugins {
 
 android {
     namespace = "app.justtalk"
-    compileSdk = 35
+    // AGP 8.3.2 is tested up to 34 (CI compatibility)
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "app.justtalk"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
 
