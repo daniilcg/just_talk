@@ -76,7 +76,7 @@ object NotificationHelper {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val title = "Входящий звонок"
+        val title = if (isVideo) "Входящий видеозвонок" else "Входящий аудиозвонок"
         val text = if (!from.isNullOrBlank()) "От: $from" else "Нажми, чтобы ответить"
         val notif = NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(android.R.drawable.sym_call_incoming)

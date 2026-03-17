@@ -112,12 +112,12 @@ fun ChatScreen(
                 actions = {
                     TextButton(onClick = {
                         val room = UUID.randomUUID().toString().substring(0, 8)
-                        session.inviteUid(toUid = uid, roomId = room)
+                        session.inviteUid(toUid = uid, roomId = room, isVideo = false)
                         onStartCall(room, false)
                     }) { Text("Аудио") }
                     TextButton(onClick = {
                         val room = UUID.randomUUID().toString().substring(0, 8)
-                        session.inviteUid(toUid = uid, roomId = room)
+                        session.inviteUid(toUid = uid, roomId = room, isVideo = true)
                         onStartCall(room, true)
                     }) { Text("Видео") }
                 }

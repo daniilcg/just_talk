@@ -62,18 +62,23 @@ fun JustTalkApp(initialRoomId: String?, initialVideo: Boolean = true) {
         val store = remember { ProfileStore(context) }
         val hasUid = remember { runBlocking { !store.uid.first().isNullOrBlank() } }
         val session = remember { DirectorySession(context.applicationContext) }
-        var incomingInvite by remember { mutableStateOf<Pair<String, String>?>(null) } // fromPeerId, roomId
+        // fromPeerId, roomId, isVideo
+        var incomingInvite by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
 
         LaunchedEffect(Unit) {
             session.start()
             session.events.collectLatest { ev ->
                 if (ev is DirectoryEvent.Invite) {
-                    incomingInvite = ev.fromPeerId to ev.roomId
-                    AppLog.i("Directory", "invite fromPeerId=${ev.fromPeerId} roomId=${ev.roomId}")
+                    incomingInvite = Triple(ev.fromPeerId, ev.roomId, ev.isVideo)
+                    AppLog.i(
+                        "Directory",
+                        "invite fromPeerId=${ev.fromPeerId} roomId=${ev.roomId} isVideo=${ev.isVideo}"
+                    )
                     NotificationHelper.showIncomingCall(
                         context = context.applicationContext,
                         from = ev.fromPeerId,
-                        roomId = ev.roomId
+                        roomId = ev.roomId,
+                        isVideo = ev.isVideo
                     )
                 }
                 if (ev is DirectoryEvent.Msg) {
@@ -101,8 +106,9 @@ fun JustTalkApp(initialRoomId: String?, initialVideo: Boolean = true) {
                 confirmButton = {
                     androidx.compose.material3.Button(onClick = {
                         val room = invite.second
+                        val isVideo = invite.third
                         incomingInvite = null
-                        nav.navigate("call/$room?video=1")
+                        nav.navigate("call/$room?video=${if (isVideo) 1 else 0}")
                     }) { androidx.compose.material3.Text("Принять") }
                 },
                 dismissButton = {

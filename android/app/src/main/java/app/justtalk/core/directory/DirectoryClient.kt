@@ -13,11 +13,54 @@ import java.util.concurrent.TimeUnit
 import app.justtalk.core.logging.AppLog
 
 sealed interface DirectoryEvent {
-    data class SignupOk(val uid: String, val nickname: String, val email: String?, val displayName: String?, val bio: String?, val status: String?) : DirectoryEvent
-    data class LoginOk(val uid: String, val nickname: String, val email: String?, val displayName: String?, val bio: String?, val status: String?) : DirectoryEvent
-    data class LookupUidResult(val uid: String, val nickname: String?, val onlinePeerId: String?, val displayName: String?, val bio: String?, val status: String?) : DirectoryEvent
-    data class LookupNicknameResult(val nickname: String, val uid: String?, val onlinePeerId: String?, val displayName: String?, val bio: String?, val status: String?) : DirectoryEvent
-    data class Invite(val fromPeerId: String, val roomId: String) : DirectoryEvent
+    data class SignupOk(
+        val uid: String,
+        val nickname: String,
+        val email: String?,
+        val displayName: String?,
+        val bio: String?,
+        val status: String?
+    ) : DirectoryEvent
+
+    data class LoginOk(
+        val uid: String,
+        val nickname: String,
+        val email: String?,
+        val displayName: String?,
+        val bio: String?,
+        val status: String?
+    ) : DirectoryEvent
+
+    data class LookupUidResult(
+        val uid: String,
+        val nickname: String?,
+        val onlinePeerId: String?,
+        val displayName: String?,
+        val bio: String?,
+        val status: String?
+    ) : DirectoryEvent
+
+    data class LookupNicknameResult(
+        val nickname: String,
+        val uid: String?,
+        val onlinePeerId: String?,
+        val displayName: String?,
+        val bio: String?,
+        val status: String?
+    ) : DirectoryEvent
+
+    /**
+     * isVideo=true  -> видеозвонок
+     * isVideo=false -> только аудио.
+     * Если сервер/старый клиент не передали поле, по умолчанию считаем видеозвонком,
+     * чтобы не ломать обратную совместимость.
+     */
+    data class Invite(
+        val fromPeerId: String,
+        val roomId: String,
+        val isVideo: Boolean
+    ) : DirectoryEvent
+
     data class InviteResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
     data class Msg(val fromUid: String, val text: String, val tsMs: Long) : DirectoryEvent
     data class MsgResult(val ok: Boolean, val reason: String? = null) : DirectoryEvent
@@ -100,7 +143,8 @@ class DirectoryClient(
                     "invite" -> _events.tryEmit(
                         DirectoryEvent.Invite(
                             fromPeerId = obj.optString("from"),
-                            roomId = obj.optString("room")
+                            roomId = obj.optString("room"),
+                            isVideo = obj.optBoolean("isVideo", /* default */ true)
                         )
                     )
                     "invite_result" -> _events.tryEmit(
@@ -184,13 +228,14 @@ class DirectoryClient(
         ws?.send(obj.toString())
     }
 
-    fun inviteUid(fromPeerId: String, toUid: String, roomId: String) {
+    fun inviteUid(fromPeerId: String, toUid: String, roomId: String, isVideo: Boolean) {
         val obj = JSONObject()
             .put("type", "invite_uid")
             .put("from", fromPeerId)
             .put("toUid", toUid.trim())
             .put("room", roomId)
-        AppLog.i("DirectoryClient", "send invite_uid toUid=${toUid.trim()} room=$roomId")
+            .put("isVideo", isVideo)
+        AppLog.i("DirectoryClient", "send invite_uid toUid=${toUid.trim()} room=$roomId isVideo=$isVideo")
         ws?.send(obj.toString())
     }
 

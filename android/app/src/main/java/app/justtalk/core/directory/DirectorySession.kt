@@ -120,11 +120,14 @@ class DirectorySession(
         client?.lookupNickname(nickname)
     }
 
-    fun inviteUid(toUid: String, roomId: String) {
+    fun inviteUid(toUid: String, roomId: String, isVideo: Boolean) {
         scope.launch {
             val fromPeer = store.ensurePeerId()
-            AppLog.i("DirectorySession", "invite_uid toUid=$toUid roomId=$roomId fromPeer=${fromPeer.take(8)}…")
-            client?.inviteUid(fromPeerId = fromPeer, toUid = toUid, roomId = roomId)
+            AppLog.i(
+                "DirectorySession",
+                "invite_uid toUid=$toUid roomId=$roomId isVideo=$isVideo fromPeer=${fromPeer.take(8)}…"
+            )
+            client?.inviteUid(fromPeerId = fromPeer, toUid = toUid, roomId = roomId, isVideo = isVideo)
         }
     }
 

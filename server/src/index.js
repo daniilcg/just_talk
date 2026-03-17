@@ -16,7 +16,7 @@ const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
  * - login: {type:"login", uid:"0000001", password:"...", peerId:"<id>"} -> {type:"login_ok", uid, nickname, email}
  * - lookup_uid: {type:"lookup_uid", uid:"0000001"} -> {type:"lookup_uid_result", uid, nickname, onlinePeerId:null|"<id>"}
  * - lookup_nickname: {type:"lookup_nickname", nickname:"nick"} -> {type:"lookup_nickname_result", nickname, uid:null|"0000001", onlinePeerId:null|"<id>"}
- * - invite_uid: {type:"invite_uid", from:"<peerId>", toUid:"0000001", room:"<roomId>"} -> to target: {type:"invite", from:"<peerId>", room:"<roomId>"}
+     * - invite_uid: {type:"invite_uid", from:"<peerId>", toUid:"0000001", room:"<roomId>", isVideo:true|false} -> to target: {type:"invite", from:"<peerId>", room:"<roomId>", isVideo:true|false}
  * - msg_uid: {type:"msg_uid", toUid:"<uid>", text:"..."} -> to target: {type:"msg", fromUid:"<uid>", text:"...", tsMs:<num>}
  * - set_fcm_token: {type:"set_fcm_token", token:"..."} -> {type:"set_fcm_token_ok"}
  *
@@ -196,6 +196,7 @@ wss.on("connection", (ws) => {
       const from = String(msg.from ?? state.peerId ?? "").trim();
       const toUid = String(msg.toUid ?? "").trim();
       const room = String(msg.room ?? "").trim();
+      const isVideo = Boolean(msg.isVideo ?? true);
       if (!from || !toUid || !room) {
         send(ws, { type: "error", code: "bad_invite" });
         return;
@@ -203,7 +204,7 @@ wss.on("connection", (ws) => {
       const toPeerId = onlineByUid.get(toUid);
       const targetWs = toPeerId ? peers.get(toPeerId) : null;
       if (targetWs) {
-        send(targetWs, { type: "invite", from, room });
+        send(targetWs, { type: "invite", from, room, isVideo });
         send(ws, { type: "invite_result", ok: true, toPeerId });
       } else {
         // Try push notification (offline)
@@ -216,7 +217,8 @@ wss.on("connection", (ws) => {
                 data: {
                   type: "invite",
                   roomId: room,
-                  from
+                  from,
+                  isVideo: isVideo ? "1" : "0"
                 }
               })
             : false;
