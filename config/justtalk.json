@@ -1,5 +1,5 @@
 {
-  "signalingUrl": "wss://PUT_YOUR_TRYCLOUDFLARE_URL_HERE",
+  "signalingUrl": "wss://gotta-experiments-pets-elect.trycloudflare.com",
   "turn": null
 }
 
