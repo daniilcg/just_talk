@@ -5,6 +5,7 @@ import android.widget.ImageView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,6 +68,7 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
     var bio by remember { mutableStateOf("") }
     var avatarUri by remember { mutableStateOf<String?>(null) }
     var saved by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
 
     val pickAvatar = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -86,15 +90,19 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
     JustTalkBackground {
         Column(modifier = Modifier.fillMaxSize().imePadding()) {
             TopAppBar(title = { Text("Настройки") })
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.Top
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                val scroll = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scroll)
+                        .padding(14.dp)
+                        .padding(bottom = 92.dp),
+                    verticalArrangement = Arrangement.Top
+                ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Профиль", style = MaterialTheme.typography.titleMedium)
@@ -109,7 +117,7 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
                                     .size(64.dp)
                                     .aspectRatio(1f)
                                     .background(
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                                         shape = CircleShape
                                     ),
                                 factory = { ctx ->
@@ -167,7 +175,7 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Сеть (обычно не нужно)", style = MaterialTheme.typography.titleMedium)
@@ -219,29 +227,61 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
                 }
 
                 Spacer(Modifier.height(14.dp))
-
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = UrlValidators.isValidSignalingUrl(signalingUrl),
-                    onClick = {
-                        scope.launch {
-                            store.setSignalingUrl(signalingUrl)
-                            if (turnUrl.isNotBlank() && turnUser.isNotBlank() && turnPass.isNotBlank()) {
-                                store.setTurn(turnUrl, turnUser, turnPass)
-                            }
-                            store.setProfile(displayName = displayName, bio = bio, avatarUri = avatarUri)
-                            session.setProfile(displayName = displayName, bio = bio)
-                            saved = "Сохранено"
-                            onBack()
-                        }
-                    }
-                ) {
-                    Text("Сохранить")
+                if (saved != null) {
+                    Text(saved!!, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(10.dp))
+                }
                 }
 
-                if (saved != null) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(saved!!, style = MaterialTheme.typography.bodyMedium)
+                // Sticky save bar: profile save must ALWAYS be available.
+                Card(
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                modifier = Modifier.weight(1f),
+                                enabled = !saving,
+                                onClick = {
+                                    if (saving) return@Button
+                                    saving = true
+                                    saved = null
+                                    scope.launch {
+                                        runCatching {
+                                            store.setProfile(displayName = displayName, bio = bio, avatarUri = avatarUri)
+                                            session.setProfile(displayName = displayName, bio = bio)
+                                        }
+                                        saved = "Профиль сохранён"
+                                        saving = false
+                                        onBack()
+                                    }
+                                }
+                            ) { Text("Сохранить профиль") }
+
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                enabled = !saving && UrlValidators.isValidSignalingUrl(signalingUrl),
+                                onClick = {
+                                    if (saving) return@OutlinedButton
+                                    saving = true
+                                    saved = null
+                                    scope.launch {
+                                        runCatching {
+                                            store.setSignalingUrl(signalingUrl)
+                                            if (turnUrl.isNotBlank() && turnUser.isNotBlank() && turnPass.isNotBlank()) {
+                                                store.setTurn(turnUrl, turnUser, turnPass)
+                                            }
+                                        }
+                                        saved = "Сеть сохранена"
+                                        saving = false
+                                    }
+                                }
+                            ) { Text("Сохранить сеть") }
+                        }
+                    }
                 }
             }
         }

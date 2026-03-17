@@ -33,18 +33,21 @@ import kotlinx.coroutines.runBlocking
 fun JustTalkApp(initialRoomId: String?) {
     val context = LocalContext.current
     JustTalkTheme {
-        // Android 13+ requires runtime notification permission for sounds/notifications.
-        if (Build.VERSION.SDK_INT >= 33) {
-            val launcher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { _ -> }
-            LaunchedEffect(Unit) {
-                val granted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // First launch permissions: user wants "ask immediately".
+        // Android can't ask "during install", only at runtime.
+        val permsLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { _ -> }
+        LaunchedEffect(Unit) {
+            val required = buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                add(Manifest.permission.CAMERA)
+                if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
             }
+            val missing = required.filter { p ->
+                ContextCompat.checkSelfPermission(context, p) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+            if (missing.isNotEmpty()) permsLauncher.launch(missing.toTypedArray())
         }
 
         val store = remember { ProfileStore(context) }
