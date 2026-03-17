@@ -10,6 +10,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import app.justtalk.core.logging.AppLog
 
 sealed interface SignalingEvent {
     data class Joined(val room: String, val peerId: String, val peers: List<String>) : SignalingEvent
@@ -39,6 +40,7 @@ class SignalingClient(
     val events: SharedFlow<SignalingEvent> = _events
 
     fun connect() {
+        AppLog.i("SignalingClient", "connect url=${url.take(200)} room=$roomId peer=${peerId.take(8)}…")
         val request = Request.Builder().url(url).build()
         ws = okHttp.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -70,9 +72,18 @@ class SignalingClient(
                                 peers = peers
                             )
                         )
+                        AppLog.i("SignalingClient", "joined room=$roomId peers=${peers.size}")
                     }
-                    "peer_joined" -> _events.tryEmit(SignalingEvent.PeerJoined(obj.optString("peerId")))
-                    "peer_left" -> _events.tryEmit(SignalingEvent.PeerLeft(obj.optString("peerId")))
+                    "peer_joined" -> {
+                        val p = obj.optString("peerId")
+                        _events.tryEmit(SignalingEvent.PeerJoined(p))
+                        AppLog.i("SignalingClient", "peer_joined peer=${p.take(8)}…")
+                    }
+                    "peer_left" -> {
+                        val p = obj.optString("peerId")
+                        _events.tryEmit(SignalingEvent.PeerLeft(p))
+                        AppLog.i("SignalingClient", "peer_left peer=${p.take(8)}…")
+                    }
                     "signal" -> {
                         val payload = obj.optJSONObject("payload") ?: JSONObject()
                         val toVal = if (obj.isNull("to")) null else obj.optString("to")
@@ -83,6 +94,7 @@ class SignalingClient(
                                 payload = payload
                             )
                         )
+                        AppLog.d("SignalingClient", "signal from=${obj.optString("from").take(8)}… to=${toVal?.take(8)} kind=${payload.optString("kind")}")
                     }
                     "error" -> _events.tryEmit(
                         SignalingEvent.Error(
@@ -99,10 +111,12 @@ class SignalingClient(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                AppLog.w("SignalingClient", "closed code=$code reason=$reason")
                 _events.tryEmit(SignalingEvent.Closed)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                AppLog.w("SignalingClient", "ws_failure ${t.message}", t)
                 _events.tryEmit(SignalingEvent.Error("ws_failure", t.message))
             }
         })
@@ -115,6 +129,7 @@ class SignalingClient(
             .put("from", peerId)
             .put("to", to)
             .put("payload", payload)
+        AppLog.d("SignalingClient", "send signal to=${to?.take(8)} kind=${payload.optString("kind")}")
         ws?.send(obj.toString())
     }
 

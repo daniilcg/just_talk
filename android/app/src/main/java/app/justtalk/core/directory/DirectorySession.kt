@@ -10,6 +10,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -40,7 +41,9 @@ class DirectorySession(
     fun start() {
         scope.launch {
             // Reconnect when signalingUrl changes.
-            store.signalingUrl.collectLatest { url ->
+            store.signalingUrl
+                .distinctUntilChanged()
+                .collectLatest { url ->
                 AppLog.i("DirectorySession", "signalingUrl changed: ${url.take(120)}")
                 connectLoop(url)
             }

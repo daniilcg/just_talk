@@ -34,9 +34,17 @@ object AppLog {
 
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
-        // Prefer public Documents/JustTalk/logs so user can grab file without adb.
-        val docs = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-        logDir = File(File(docs, "JustTalk"), "logs")
+        // Logging location strategy:
+        // - Android <= 28: we can write to public Documents (with legacy storage permission).
+        // - Android 29+: direct file writes to public Documents are restricted; use app-scoped external docs dir.
+        val baseDir =
+            if (Build.VERSION.SDK_INT <= 28) {
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+            } else {
+                // Usually visible under Android/data/... (some file managers hide it), but reliable without extra perms.
+                context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir
+            }
+        logDir = File(File(baseDir, "JustTalk"), "logs")
         logDir.mkdirs()
         logFile = File(logDir, "justtalk.log")
 
@@ -48,6 +56,7 @@ object AppLog {
             appendLine("time=${ts.format(Date())}")
             appendLine("device=${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("sdk=${Build.VERSION.SDK_INT}")
+            appendLine("logDir=${runCatching { logDir.absolutePath }.getOrDefault("unknown")}")
             appendLine("==========================")
         }
         writeNow(header)

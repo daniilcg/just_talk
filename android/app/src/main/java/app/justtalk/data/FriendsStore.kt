@@ -33,7 +33,7 @@ class FriendsStore(private val context: Context) {
     }
 
     suspend fun remove(uid: String) {
-        val normalized = uid.trim()
+        val normalized = uid.trim().lowercase()
         context.friendsStore.edit { prefs ->
             val set = (prefs[kFriends] ?: emptySet()).toMutableSet()
             set.remove(normalized)
