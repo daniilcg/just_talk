@@ -9,11 +9,12 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +32,8 @@ jobs:
           # Fix Windows line endings if present
           sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug --stacktrace | tee ../gradle-build.log
 
       - name: Rename APK
         run: |
@@ -44,4 +46,11 @@ jobs:
         with:
           files: dist/*.apk
           generate_release_notes: true
+
+      - name: Upload Gradle log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: gradle-build.log
 

@@ -5,11 +5,12 @@ on:
     branches: [ "main" ]
   workflow_dispatch: {}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,11 +28,19 @@ jobs:
           # Fix Windows line endings if present
           sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug --stacktrace | tee ../gradle-build.log
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: justtalk-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+
+      - name: Upload Gradle log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: gradle-build.log
 
