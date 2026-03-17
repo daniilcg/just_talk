@@ -51,6 +51,8 @@ import app.justtalk.core.signaling.SignalingEvent
 import app.justtalk.core.webrtc.WebRtcClient
 import app.justtalk.data.ProfileStore
 import app.justtalk.ui.theme.JustTalkBackground
+import app.justtalk.core.logging.UiDebug
+import app.justtalk.core.logging.logLayout
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -69,6 +71,7 @@ fun CallScreen(
     isVideo: Boolean = true,
     onHangup: () -> Unit
 ) {
+    UiDebug.logScreenOnce("CallScreen(video=$isVideo)")
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val scope = rememberCoroutineScope()
@@ -296,6 +299,7 @@ fun CallScreen(
                         .fillMaxWidth()
                         .heightIn(min = 240.dp, max = 520.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
+                        .logLayout("CallVideoBox")
                 ) {
                     AndroidView(
                         modifier = Modifier.fillMaxSize(),

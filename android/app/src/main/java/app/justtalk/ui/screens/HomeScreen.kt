@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import app.justtalk.ui.theme.JustTalkBackground
+import app.justtalk.core.logging.UiDebug
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +67,7 @@ fun HomeScreen(
     onOpenChat: (uid: String) -> Unit = {},
     session: DirectorySession? = null
 ) {
+    UiDebug.logScreenOnce("HomeScreen")
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val secure = remember { SecurePasswordStore(context) }

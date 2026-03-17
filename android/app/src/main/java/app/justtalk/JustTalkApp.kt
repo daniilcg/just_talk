@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.core.content.ContextCompat
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.core.directory.DirectorySession
+import app.justtalk.core.logging.AppLog
 import app.justtalk.data.ProfileStore
 import app.justtalk.push.NotificationHelper
 import app.justtalk.ui.theme.JustTalkTheme
@@ -33,6 +34,10 @@ import kotlinx.coroutines.runBlocking
 fun JustTalkApp(initialRoomId: String?) {
     val context = LocalContext.current
     JustTalkTheme {
+        LaunchedEffect(Unit) {
+            AppLog.start(context.applicationContext)
+            AppLog.i("App", "JustTalkApp started")
+        }
         // First launch permissions: user wants "ask immediately".
         // Android can't ask "during install", only at runtime.
         val permsLauncher = rememberLauncherForActivityResult(
@@ -60,6 +65,7 @@ fun JustTalkApp(initialRoomId: String?) {
             session.events.collectLatest { ev ->
                 if (ev is DirectoryEvent.Invite) {
                     incomingInvite = ev.fromPeerId to ev.roomId
+                    AppLog.i("Directory", "invite fromPeerId=${ev.fromPeerId} roomId=${ev.roomId}")
                     NotificationHelper.showIncomingCall(
                         context = context.applicationContext,
                         from = ev.fromPeerId,
@@ -67,6 +73,7 @@ fun JustTalkApp(initialRoomId: String?) {
                     )
                 }
                 if (ev is DirectoryEvent.Msg) {
+                    AppLog.i("Directory", "msg fromUid=${ev.fromUid} len=${ev.text.length}")
                     // Show a lightweight notification while app is running.
                     NotificationHelper.showMessage(
                         context = context.applicationContext,

@@ -10,6 +10,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import app.justtalk.core.logging.AppLog
 
 sealed interface DirectoryEvent {
     data class SignupOk(val uid: String, val nickname: String, val email: String?, val displayName: String?, val bio: String?, val status: String?) : DirectoryEvent
@@ -44,6 +45,7 @@ class DirectoryClient(
     val events: SharedFlow<DirectoryEvent> = _events
 
     fun connect() {
+        AppLog.i("DirectoryClient", "connect url=${url.take(200)}")
         val request = Request.Builder().url(url).build()
         ws = okHttp.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) = Unit
@@ -138,10 +140,12 @@ class DirectoryClient(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                AppLog.w("DirectoryClient", "closed code=$code reason=$reason")
                 _events.tryEmit(DirectoryEvent.Closed)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                AppLog.w("DirectoryClient", "ws_failure ${t.message}", t)
                 _events.tryEmit(DirectoryEvent.Error("ws_failure", t.message))
             }
         })
@@ -186,6 +190,7 @@ class DirectoryClient(
             .put("from", fromPeerId)
             .put("toUid", toUid.trim())
             .put("room", roomId)
+        AppLog.i("DirectoryClient", "send invite_uid toUid=${toUid.trim()} room=$roomId")
         ws?.send(obj.toString())
     }
 
@@ -194,6 +199,7 @@ class DirectoryClient(
             .put("type", "msg_uid")
             .put("toUid", toUid.trim())
             .put("text", text)
+        AppLog.i("DirectoryClient", "send msg_uid toUid=${toUid.trim()} len=${text.length}")
         ws?.send(obj.toString())
     }
 

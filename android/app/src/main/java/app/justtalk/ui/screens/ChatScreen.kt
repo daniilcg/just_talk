@@ -45,6 +45,7 @@ import app.justtalk.data.ChatLine
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
 import app.justtalk.ui.theme.JustTalkBackground
+import app.justtalk.core.logging.UiDebug
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -58,6 +59,7 @@ fun ChatScreen(
     onStartCall: (roomId: String, isVideo: Boolean) -> Unit,
     session: DirectorySession
 ) {
+    UiDebug.logScreenOnce("ChatScreen(uid=$uid)")
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val secure = remember { SecurePasswordStore(context) }

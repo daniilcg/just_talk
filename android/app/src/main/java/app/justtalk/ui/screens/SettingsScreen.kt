@@ -49,12 +49,14 @@ import app.justtalk.core.directory.DirectorySession
 import app.justtalk.core.config.UrlValidators
 import app.justtalk.data.ProfileStore
 import app.justtalk.ui.theme.JustTalkBackground
+import app.justtalk.core.logging.UiDebug
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
+    UiDebug.logScreenOnce("SettingsScreen")
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
     val scope = rememberCoroutineScope()
