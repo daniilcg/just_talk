@@ -21,3 +21,6 @@ server/users.json
 # Firebase
 **/google-services.json
 
+# CI / logs
+gradle-build.log
+
