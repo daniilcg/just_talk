@@ -8,6 +8,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +24,8 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: |
+          # Fix Windows line endings if present
+          sed -i 's/\r$//' ./gradlew
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
