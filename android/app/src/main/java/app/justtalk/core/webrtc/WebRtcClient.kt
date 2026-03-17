@@ -151,8 +151,15 @@ class WebRtcClient(
         }
         peerConnection.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
-                peerConnection.setLocalDescription(SimpleSdpObserver(), desc)
-                onSdp(desc)
+                peerConnection.setLocalDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        onSdp(desc)
+                    }
+                    override fun onSetFailure(error: String) {
+                        // still emit for debugging; signaling may show the failure
+                        onSdp(desc)
+                    }
+                }, desc)
             }
         }, constraints)
     }
@@ -164,14 +171,23 @@ class WebRtcClient(
         }
         peerConnection.createAnswer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
-                peerConnection.setLocalDescription(SimpleSdpObserver(), desc)
-                onSdp(desc)
+                peerConnection.setLocalDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        onSdp(desc)
+                    }
+                    override fun onSetFailure(error: String) {
+                        onSdp(desc)
+                    }
+                }, desc)
             }
         }, constraints)
     }
 
-    fun setRemoteDescription(desc: SessionDescription) {
-        peerConnection.setRemoteDescription(SimpleSdpObserver(), desc)
+    fun setRemoteDescription(desc: SessionDescription, onDone: (ok: Boolean) -> Unit = {}) {
+        peerConnection.setRemoteDescription(object : SimpleSdpObserver() {
+            override fun onSetSuccess() = onDone(true)
+            override fun onSetFailure(error: String) = onDone(false)
+        }, desc)
     }
 
     fun addIceCandidate(candidate: IceCandidate) {

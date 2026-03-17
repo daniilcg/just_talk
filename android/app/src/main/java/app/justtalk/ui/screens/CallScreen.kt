@@ -135,6 +135,9 @@ fun CallScreen(
     var signaling: SignalingClient? by remember { mutableStateOf(null) }
     var peerId by remember { mutableStateOf("") }
     var targetPeerId: String? by remember { mutableStateOf(null) }
+    var isInitiator by remember { mutableStateOf(false) }
+    val pendingIce = remember { mutableStateListOf<IceCandidate>() }
+    var madeOffer by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -175,6 +178,7 @@ fun CallScreen(
                 is SignalingEvent.Joined -> {
                     status = "Комната: $roomId"
                     targetPeerId = ev.peers.firstOrNull()
+                    isInitiator = targetPeerId != null && peerId < (targetPeerId ?: "")
                     if (webrtc == null) {
                         val turnUrl = store.turnUrl.first().orEmpty()
                         val turnUser = store.turnUser.first().orEmpty()
@@ -210,8 +214,9 @@ fun CallScreen(
                     }
 
                     // If there is already a peer in room, act as initiator.
-                    if (targetPeerId != null) {
+                    if (targetPeerId != null && isInitiator && !madeOffer) {
                         status = "Создаю offer…"
+                        madeOffer = true
                         webrtc?.createOffer { desc ->
                             s.sendSignal(targetPeerId, WebRtcClient.sdpToJson(desc))
                         }
@@ -223,11 +228,10 @@ fun CallScreen(
                 is SignalingEvent.PeerJoined -> {
                     if (targetPeerId == null) targetPeerId = ev.peerId
                     status = "Peer подключился"
-                    if (webrtc != null && targetPeerId == ev.peerId) {
-                        // Become initiator if we were waiting.
-                        webrtc?.createOffer { desc ->
-                            s.sendSignal(targetPeerId, WebRtcClient.sdpToJson(desc))
-                        }
+                    isInitiator = targetPeerId != null && peerId < (targetPeerId ?: "")
+                    if (webrtc != null && targetPeerId == ev.peerId && isInitiator && !madeOffer) {
+                        madeOffer = true
+                        webrtc?.createOffer { desc -> s.sendSignal(targetPeerId, WebRtcClient.sdpToJson(desc)) }
                     }
                 }
 
@@ -239,17 +243,30 @@ fun CallScreen(
 
                     val sdp = WebRtcClient.jsonToSdp(payload)
                     if (sdp != null) {
-                        w.setRemoteDescription(sdp)
-                        if (sdp.type == SessionDescription.Type.OFFER) {
-                            status = "Пришел offer, отвечаю…"
-                            w.createAnswer { ans ->
-                                s.sendSignal(targetPeerId, WebRtcClient.sdpToJson(ans))
+                        w.setRemoteDescription(sdp) { ok ->
+                            if (!ok) {
+                                status = "SDP ошибка"
+                                return@setRemoteDescription
+                            }
+                            // Drain any queued ICE after SDP is set.
+                            val drained = pendingIce.toList()
+                            pendingIce.clear()
+                            drained.forEach { w.addIceCandidate(it) }
+
+                            if (sdp.type == SessionDescription.Type.OFFER) {
+                                status = "Пришел offer, отвечаю…"
+                                w.createAnswer { ans ->
+                                    s.sendSignal(targetPeerId, WebRtcClient.sdpToJson(ans))
+                                }
                             }
                         }
                     }
 
                     val ice: IceCandidate? = WebRtcClient.jsonToIce(payload)
-                    if (ice != null) w.addIceCandidate(ice)
+                    if (ice != null) {
+                        // If remote SDP not set yet, buffer ICE.
+                        pendingIce.add(ice)
+                    }
                 }
 
                 is SignalingEvent.PeerLeft -> {

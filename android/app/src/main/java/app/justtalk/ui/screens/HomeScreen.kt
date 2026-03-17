@@ -151,12 +151,23 @@ fun HomeScreen(
                     }
                 }
                 is DirectoryEvent.LookupUidResult -> {
-                    foundUid = ev.uid
-                    foundOnlinePeerId = ev.onlinePeerId
+                    // Treat as found only if server knows this uid.
+                    if (ev.nickname != null) {
+                        foundUid = ev.uid
+                        foundOnlinePeerId = ev.onlinePeerId
+                    } else {
+                        foundUid = null
+                        foundOnlinePeerId = null
+                    }
                 }
                 is DirectoryEvent.LookupNicknameResult -> {
-                    foundUid = ev.uid
-                    foundOnlinePeerId = ev.onlinePeerId
+                    if (ev.uid != null) {
+                        foundUid = ev.uid
+                        foundOnlinePeerId = ev.onlinePeerId
+                    } else {
+                        foundUid = null
+                        foundOnlinePeerId = null
+                    }
                 }
                 is DirectoryEvent.InviteResult -> {
                     directoryStatus = if (ev.ok) "Инвайт отправлен" else "Инвайт: ${ev.reason ?: "ошибка"}"
@@ -254,7 +265,9 @@ fun HomeScreen(
                                 foundOnlinePeerId = null
                                 friendAddedStatus = null
                                 val q = friendQuery.trim().lowercase()
-                                session?.lookupUid(q)
+                                // If it looks like a handle, allow nickname lookup too.
+                                val isHandle = q.length in 3..24 && q.all { it.isLetterOrDigit() || it == '_' || it == '.' || it == '-' }
+                                if (isHandle) session?.lookupNickname(q) else session?.lookupUid(q)
                             }
                         ) { Text("Найти") }
                         Spacer(Modifier.width(12.dp))

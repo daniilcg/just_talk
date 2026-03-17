@@ -31,7 +31,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.runBlocking
 
 @Composable
-fun JustTalkApp(initialRoomId: String?) {
+fun JustTalkApp(initialRoomId: String?, initialVideo: Boolean = true) {
     val context = LocalContext.current
     JustTalkTheme {
         LaunchedEffect(Unit) {
@@ -90,7 +90,7 @@ fun JustTalkApp(initialRoomId: String?) {
 
         val nav = rememberNavController()
         val startDestination =
-            if (!initialRoomId.isNullOrBlank() && hasUid) "call/$initialRoomId" else "auth"
+            if (!initialRoomId.isNullOrBlank() && hasUid) "call/$initialRoomId?video=${if (initialVideo) 1 else 0}" else "auth"
 
         val invite = incomingInvite
         if (invite != null) {

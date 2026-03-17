@@ -62,12 +62,13 @@ object NotificationHelper {
         nm.createNotificationChannel(messages)
     }
 
-    fun showIncomingCall(context: Context, from: String?, roomId: String) {
+    fun showIncomingCall(context: Context, from: String?, roomId: String, isVideo: Boolean = true) {
         ensureChannels(context)
         val callSound = Uri.parse("android.resource://${context.packageName}/raw/ring")
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("roomId", roomId)
+            putExtra("video", if (isVideo) 1 else 0)
         }
         val pi = PendingIntent.getActivity(
             context,

@@ -99,7 +99,7 @@ class SignalingClient(
                     "error" -> _events.tryEmit(
                         SignalingEvent.Error(
                             code = obj.optString("code", "error"),
-                            details = obj.optString("to", null)
+                            details = obj.optString("details", null)
                         )
                     )
                     else -> Unit
