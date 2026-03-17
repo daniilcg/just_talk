@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.justtalk.core.config.RemoteConfig
+import app.justtalk.core.config.UrlValidators
 import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.ProfileStore
@@ -67,7 +68,7 @@ fun AuthScreen(
         val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
         val resolvedUrl = remote?.signalingUrl ?: url
         signalingUrl = resolvedUrl
-        if (resolvedUrl.startsWith("ws")) {
+        if (UrlValidators.isValidSignalingUrl(resolvedUrl)) {
             store.setSignalingUrl(resolvedUrl)
         } else {
             configError = remoteErr ?: "no_config"
@@ -136,7 +137,8 @@ fun AuthScreen(
                 enabled = ready
             )
             Spacer(Modifier.height(12.dp))
-            val serverLabel = if (signalingUrl.startsWith("ws")) signalingUrl else "не настроен"
+            val configured = UrlValidators.isValidSignalingUrl(signalingUrl)
+            val serverLabel = if (configured) signalingUrl else "не настроен"
             // Hidden from normal users; shown only as a simple status.
             val serverStatus = if (serverLabel == "не настроен") "не доступен" else "подключен"
             Text("Сервер: $serverStatus")
@@ -161,7 +163,7 @@ fun AuthScreen(
             }
             Spacer(Modifier.height(20.dp))
             Button(
-                enabled = ready && nickname.length >= 3 && password.length >= 6 && signalingUrl.startsWith("ws"),
+                enabled = ready && nickname.length >= 3 && password.length >= 6 && configured,
                 onClick = {
                     scope.launch {
                         store.setSignalingUrl(signalingUrl)

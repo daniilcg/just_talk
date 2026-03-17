@@ -25,7 +25,8 @@ class ProfileStore(private val context: Context) {
     val nickname: Flow<String?> = context.dataStore.data.map { it[kNickname] }
     val uid: Flow<String?> = context.dataStore.data.map { it[kUid] }
     val peerId: Flow<String> = context.dataStore.data.map { it[kPeerId] ?: UUID.randomUUID().toString() }
-    val signalingUrl: Flow<String> = context.dataStore.data.map { it[kSignalingUrl] ?: "wss://not-configured.invalid" }
+    // Empty means "not configured yet". Real value comes from RemoteConfig or Settings.
+    val signalingUrl: Flow<String> = context.dataStore.data.map { it[kSignalingUrl] ?: "" }
     val turnUrl: Flow<String?> = context.dataStore.data.map { it[kTurnUrl] }
     val turnUser: Flow<String?> = context.dataStore.data.map { it[kTurnUser] }
     val turnPass: Flow<String?> = context.dataStore.data.map { it[kTurnPass] }

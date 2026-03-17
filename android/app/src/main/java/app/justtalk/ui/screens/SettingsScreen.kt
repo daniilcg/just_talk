@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import app.justtalk.core.config.UrlValidators
 import app.justtalk.data.ProfileStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -103,7 +104,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(18.dp))
             Button(
-                enabled = signalingUrl.startsWith("ws"),
+                enabled = UrlValidators.isValidSignalingUrl(signalingUrl),
                 onClick = {
                     scope.launch {
                         store.setSignalingUrl(signalingUrl)

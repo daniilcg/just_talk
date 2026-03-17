@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.justtalk.core.config.RemoteConfig
+import app.justtalk.core.config.UrlValidators
 import app.justtalk.core.directory.DirectoryClient
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.data.FriendsStore
@@ -87,7 +88,7 @@ fun HomeScreen(
         val (remote, remoteErr) = withContext(Dispatchers.IO) { RemoteConfig.fetchDebug() }
         val resolved = remote?.signalingUrl ?: saved
         signalingUrl = resolved
-        if (resolved.startsWith("ws")) {
+        if (UrlValidators.isValidSignalingUrl(resolved)) {
             store.setSignalingUrl(resolved)
             directory = DirectoryClient(resolved).also { it.connect() }
         } else {
@@ -177,7 +178,7 @@ fun HomeScreen(
             Text("Статус: $directoryStatus")
             Spacer(Modifier.height(14.dp))
 
-            if (!signalingUrl.startsWith("ws")) {
+            if (!UrlValidators.isValidSignalingUrl(signalingUrl)) {
                 Text("Сервер не настроен. Открой настройки и вставь ссылку сервера.")
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = onOpenSettings) { Text("Открыть настройки") }
