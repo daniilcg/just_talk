@@ -1,0 +1,7 @@
+plugins {
+    // 8.3.x is compatible with Gradle 8.4 (available on this machine)
+    id("com.android.application") version "8.3.2" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
+}
+

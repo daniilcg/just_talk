@@ -1,0 +1,19 @@
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+**/build/
+
+# Local config
+local.properties
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Node
+server/node_modules/
+server/.env
+
