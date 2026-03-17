@@ -2,6 +2,7 @@ package app.justtalk.core.logging
 
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,7 +34,9 @@ object AppLog {
 
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
-        logDir = File(context.filesDir, "logs")
+        // Prefer public Documents/JustTalk/logs so user can grab file without adb.
+        val docs = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        logDir = File(File(docs, "JustTalk"), "logs")
         logDir.mkdirs()
         logFile = File(logDir, "justtalk.log")
 

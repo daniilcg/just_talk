@@ -47,6 +47,10 @@ fun JustTalkApp(initialRoomId: String?) {
             val required = buildList {
                 add(Manifest.permission.RECORD_AUDIO)
                 add(Manifest.permission.CAMERA)
+                // For logs in Documents/JustTalk/logs on old Androids
+                if (Build.VERSION.SDK_INT <= 28) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
                 if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
             }
             val missing = required.filter { p ->
