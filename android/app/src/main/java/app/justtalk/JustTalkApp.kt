@@ -1,5 +1,9 @@
 package app.justtalk
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.core.content.ContextCompat
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.core.directory.DirectorySession
 import app.justtalk.data.ProfileStore
@@ -28,6 +33,20 @@ import kotlinx.coroutines.runBlocking
 fun JustTalkApp(initialRoomId: String?) {
     val context = LocalContext.current
     JustTalkTheme {
+        // Android 13+ requires runtime notification permission for sounds/notifications.
+        if (Build.VERSION.SDK_INT >= 33) {
+            val launcher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { _ -> }
+            LaunchedEffect(Unit) {
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         val store = remember { ProfileStore(context) }
         val hasUid = remember { runBlocking { !store.uid.first().isNullOrBlank() } }
         val session = remember { DirectorySession(context.applicationContext) }

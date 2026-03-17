@@ -47,12 +47,13 @@ class DirectorySession(
 
     private suspend fun connectLoop(url: String) {
         close()
-        if (url.isBlank()) {
+        val normalized = app.justtalk.core.config.UrlValidators.normalizeSignalingUrl(url)
+        if (normalized == null) {
             status = "Сервер не настроен"
             return
         }
         while (true) {
-            val c = DirectoryClient(url)
+            val c = DirectoryClient(normalized)
             client = c
             status = "Подключение…"
             c.connect()

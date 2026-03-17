@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,6 +61,7 @@ import org.webrtc.IceCandidate
 import org.webrtc.PeerConnection
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceViewRenderer
+import org.webrtc.VideoTrack
 
 @Composable
 fun CallScreen(
@@ -119,6 +121,8 @@ fun CallScreen(
 
     var localRenderer: SurfaceViewRenderer? by remember { mutableStateOf(null) }
     var remoteRenderer: SurfaceViewRenderer? by remember { mutableStateOf(null) }
+    var pendingLocalTrack: VideoTrack? by remember { mutableStateOf(null) }
+    var pendingRemoteTrack: VideoTrack? by remember { mutableStateOf(null) }
     var dataChannel: DataChannel? by remember { mutableStateOf(null) }
     var chat: DataChannelChat? by remember { mutableStateOf(null) }
     val messages = remember { mutableStateListOf<ChatMessage>() }
@@ -188,8 +192,14 @@ fun CallScreen(
                             eglBase = eglBase,
                             iceServers = ice,
                             videoEnabled = isVideo,
-                            onLocalTrack = { track -> localRenderer?.let { track.addSink(it) } },
-                            onRemoteTrack = { track -> remoteRenderer?.let { track.addSink(it) } },
+                            onLocalTrack = { track ->
+                                pendingLocalTrack = track
+                                localRenderer?.let { track.addSink(it) }
+                            },
+                            onRemoteTrack = { track ->
+                                pendingRemoteTrack = track
+                                remoteRenderer?.let { track.addSink(it) }
+                            },
                             onIceCandidate = { c -> s.sendSignal(targetPeerId, WebRtcClient.iceToJson(c)) },
                             onConnectionState = { st -> status = "Состояние: $st" },
                             onDataChannel = { dc -> dataChannel = dc }
@@ -279,25 +289,54 @@ fun CallScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            // Main media area takes remaining space, so controls are always visible.
             if (isVideo) {
-                AndroidView(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(9f / 16f)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp)),
-                    factory = {
-                        SurfaceViewRenderer(it).apply {
-                            init(eglBase.eglBaseContext, null)
-                            setMirror(false)
-                            remoteRenderer = this
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
+                ) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = {
+                            SurfaceViewRenderer(it).apply {
+                                init(eglBase.eglBaseContext, null)
+                                setMirror(false)
+                                remoteRenderer = this
+                            }
+                        },
+                        update = { r ->
+                            // Attach track even if it arrived before renderer.
+                            val t = pendingRemoteTrack
+                            if (t != null) t.addSink(r)
                         }
-                    }
-                )
+                    )
+
+                    AndroidView(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(10.dp)
+                            .size(120.dp, 160.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(16.dp)),
+                        factory = {
+                            SurfaceViewRenderer(it).apply {
+                                init(eglBase.eglBaseContext, null)
+                                setMirror(true)
+                                localRenderer = this
+                            }
+                        },
+                        update = { r ->
+                            val t = pendingLocalTrack
+                            if (t != null) t.addSink(r)
+                        }
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp)
+                        .weight(1f)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(18.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -307,55 +346,39 @@ fun CallScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            Row(
+            // Controls bar (always visible)
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
             ) {
-                if (isVideo) {
-                    AndroidView(
-                        modifier = Modifier
-                            .size(120.dp, 160.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(16.dp)),
-                        factory = {
-                            SurfaceViewRenderer(it).apply {
-                                init(eglBase.eglBaseContext, null)
-                                setMirror(true)
-                                localRenderer = this
-                            }
-                        }
-                    )
-                } else {
-                    Spacer(Modifier.width(1.dp))
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(modifier = Modifier.padding(10.dp)) {
-                            OutlinedButton(onClick = {
+                        OutlinedButton(onClick = {
                             speakerOn = !speakerOn
                             val am = context.getSystemService(AudioManager::class.java)
                             runCatching { am?.mode = AudioManager.MODE_IN_COMMUNICATION }
                             runCatching { am?.isSpeakerphoneOn = speakerOn }
                         }) { Text(if (speakerOn) "Speaker" else "Earpiece") }
-                            Spacer(Modifier.width(8.dp))
-                            OutlinedButton(onClick = {
+
+                        OutlinedButton(onClick = {
                             micOn = !micOn
                             webrtc?.toggleMic(micOn)
                         }) { Text(if (micOn) "Mic ON" else "Mic OFF") }
-                            if (isVideo) {
-                                Spacer(Modifier.width(8.dp))
-                                OutlinedButton(onClick = {
+
+                        if (isVideo) {
+                            OutlinedButton(onClick = {
                                 camOn = !camOn
                                 webrtc?.toggleCamera(camOn)
-                                }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
-                            }
+                            }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     Button(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = onHangup,
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
