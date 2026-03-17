@@ -6,7 +6,12 @@
     android:viewportHeight="108">
 
     <!-- White message bubble + typing dots (foreground layer) -->
-    <group>
+    <!-- Inset to avoid adaptive icon cropping -->
+    <group
+        android:scaleX="0.82"
+        android:scaleY="0.82"
+        android:translateX="9.72"
+        android:translateY="9.72">
         <!-- Bubble body -->
         <path
             android:fillColor="#FFFFFF"
