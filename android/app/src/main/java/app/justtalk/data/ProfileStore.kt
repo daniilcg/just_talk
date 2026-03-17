@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.justtalk.BuildConfig
+import app.justtalk.core.config.UrlValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -62,7 +63,8 @@ class ProfileStore(private val context: Context) {
     }
 
     suspend fun setSignalingUrl(url: String) {
-        context.dataStore.edit { it[kSignalingUrl] = url.trim() }
+        val normalized = UrlValidators.normalizeSignalingUrl(url) ?: ""
+        context.dataStore.edit { it[kSignalingUrl] = normalized }
     }
 
     suspend fun setTurn(url: String, user: String, pass: String) {

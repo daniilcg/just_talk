@@ -263,7 +263,7 @@ fun SettingsScreen(onBack: () -> Unit, session: DirectorySession) {
 
                             OutlinedButton(
                                 modifier = Modifier.weight(1f),
-                                enabled = !saving && UrlValidators.isValidSignalingUrl(signalingUrl),
+                                enabled = !saving && (UrlValidators.normalizeSignalingUrl(signalingUrl) != null),
                                 onClick = {
                                     if (saving) return@OutlinedButton
                                     saving = true
