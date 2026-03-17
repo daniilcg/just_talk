@@ -24,7 +24,7 @@ object UiDebug {
 }
 
 fun Modifier.logLayout(tag: String): Modifier = composed {
-    val density = LocalDensity.current
+    val density = LocalDensity.current.density
     this.onGloballyPositioned { coords ->
         val wPx = coords.size.width
         val hPx = coords.size.height
