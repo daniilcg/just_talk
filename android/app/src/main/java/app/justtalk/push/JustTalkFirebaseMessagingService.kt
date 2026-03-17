@@ -10,8 +10,14 @@ class JustTalkFirebaseMessagingService : FirebaseMessagingService() {
         if (type == "invite") {
             val roomId = data["roomId"].orEmpty()
             val from = data["from"]
+            // From server we send isVideo as "1"/"0" string for FCM data.
+            val isVideo = when (val raw = data["isVideo"]) {
+                "1", "true", "TRUE", "True" -> true
+                "0", "false", "FALSE", "False" -> false
+                else -> true // default to video if field missing/unknown
+            }
             if (roomId.isNotBlank()) {
-                NotificationHelper.showIncomingCall(this, from, roomId)
+                NotificationHelper.showIncomingCall(this, from, roomId, isVideo = isVideo)
             }
         }
     }
