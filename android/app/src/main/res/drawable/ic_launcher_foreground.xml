@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- White message bubble + typing dots (foreground layer) -->
+    <group>
+        <!-- Bubble body -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.98"
+            android:pathData="M32,34
+                              h44
+                              a12,12 0 0 1 12,12
+                              v16
+                              a12,12 0 0 1 -12,12
+                              h-19
+                              l-10,12
+                              v-12
+                              h-8
+                              a12,12 0 0 1 -12,-12
+                              v-16
+                              a12,12 0 0 1 12,-12
+                              z" />
+
+        <!-- Typing dots -->
+        <path
+            android:fillColor="#141A33"
+            android:fillAlpha="0.26"
+            android:pathData="M44,54
+                              a2.6,2.6 0 1 0 0,0.01
+                              z" />
+        <path
+            android:fillColor="#141A33"
+            android:fillAlpha="0.26"
+            android:pathData="M54,54
+                              a2.6,2.6 0 1 0 0,0.01
+                              z" />
+        <path
+            android:fillColor="#141A33"
+            android:fillAlpha="0.26"
+            android:pathData="M64,54
+                              a2.6,2.6 0 1 0 0,0.01
+                              z" />
+    </group>
+</vector>
+
