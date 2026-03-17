@@ -229,7 +229,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = friendQuery,
                 onValueChange = { friendQuery = it.trim() },
-                label = { Text("Поиск по UID (0000001) или никнейму") },
+                label = { Text("Поиск по UIN/нику") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                 singleLine = true
             )
@@ -242,9 +242,9 @@ fun HomeScreen(
                         foundUid = null
                         foundOnlinePeerId = null
                         friendAddedStatus = null
-                        val q = friendQuery
-                        if (q.length == 7 && q.all { it.isDigit() }) directory?.lookupUid(q)
-                        else directory?.lookupNickname(q)
+                        val q = friendQuery.trim().lowercase()
+                        // UID == nickname handle (server supports legacy numeric too)
+                        directory?.lookupUid(q)
                     }
                 ) { Text("Найти") }
                 Spacer(Modifier.width(12.dp))

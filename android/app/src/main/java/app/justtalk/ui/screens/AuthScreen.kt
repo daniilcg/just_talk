@@ -130,8 +130,8 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     value = uidInput,
                     onValueChange = { uidInput = it.trim() },
-                    label = { Text("UID (например 0000001)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text("UIN/ник (например justtalk123)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     singleLine = true,
                     enabled = ready
                 )
@@ -141,7 +141,7 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     value = nickname,
                     onValueChange = { nickname = it.trim() },
-                    label = { Text("Никнейм (min 3)") },
+                    label = { Text("UIN/ник (уникальный, min 3)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     singleLine = true,
                     enabled = ready
@@ -200,7 +200,7 @@ fun AuthScreen(
                 enabled = ready &&
                     password.length >= 6 &&
                     configured &&
-                    (if (mode == Mode.Signup) nickname.length >= 3 else (uidInput.length == 7 && uidInput.all { it.isDigit() })),
+                    (if (mode == Mode.Signup) nickname.length >= 3 else uidInput.trim().length >= 3),
                 onClick = {
                     scope.launch {
                         store.setSignalingUrl(signalingUrl)
@@ -208,9 +208,10 @@ fun AuthScreen(
 
                         val client = DirectoryClient(signalingUrl).also { it.connect() }
                         if (mode == Mode.Signup) {
-                            client.signup(nickname = nickname, email = email.ifBlank { null }, peerId = peerId, password = password)
+                            // UID == nickname handle
+                            client.signup(nickname = nickname.lowercase(), email = email.ifBlank { null }, peerId = peerId, password = password)
                         } else {
-                            client.login(uid = uidInput, password = password, peerId = peerId)
+                            client.login(uid = uidInput.lowercase(), password = password, peerId = peerId)
                         }
 
                         val ev = withTimeoutOrNull(8000) {

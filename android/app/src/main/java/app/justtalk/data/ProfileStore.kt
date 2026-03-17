@@ -20,6 +20,9 @@ class ProfileStore(private val context: Context) {
     private val kTurnUrl = stringPreferencesKey("turn_url")
     private val kTurnUser = stringPreferencesKey("turn_user")
     private val kTurnPass = stringPreferencesKey("turn_pass")
+    private val kDisplayName = stringPreferencesKey("display_name")
+    private val kBio = stringPreferencesKey("bio")
+    private val kAvatarUri = stringPreferencesKey("avatar_uri")
 
     val email: Flow<String?> = context.dataStore.data.map { it[kEmail] }
     val nickname: Flow<String?> = context.dataStore.data.map { it[kNickname] }
@@ -30,6 +33,9 @@ class ProfileStore(private val context: Context) {
     val turnUrl: Flow<String?> = context.dataStore.data.map { it[kTurnUrl] }
     val turnUser: Flow<String?> = context.dataStore.data.map { it[kTurnUser] }
     val turnPass: Flow<String?> = context.dataStore.data.map { it[kTurnPass] }
+    val displayName: Flow<String?> = context.dataStore.data.map { it[kDisplayName] }
+    val bio: Flow<String?> = context.dataStore.data.map { it[kBio] }
+    val avatarUri: Flow<String?> = context.dataStore.data.map { it[kAvatarUri] }
 
     suspend fun setEmail(email: String) {
         context.dataStore.edit { it[kEmail] = email.trim() }
@@ -64,6 +70,14 @@ class ProfileStore(private val context: Context) {
             it[kTurnUrl] = url.trim()
             it[kTurnUser] = user.trim()
             it[kTurnPass] = pass
+        }
+    }
+
+    suspend fun setProfile(displayName: String, bio: String, avatarUri: String?) {
+        context.dataStore.edit {
+            it[kDisplayName] = displayName.trim()
+            it[kBio] = bio.trim()
+            if (avatarUri.isNullOrBlank()) it.remove(kAvatarUri) else it[kAvatarUri] = avatarUri
         }
     }
 }

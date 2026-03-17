@@ -20,8 +20,11 @@ class FriendsStore(private val context: Context) {
         }
 
     suspend fun add(uid: String) {
-        val normalized = uid.trim()
-        if (normalized.length != 7 || !normalized.all { it.isDigit() }) return
+        val normalized = uid.trim().lowercase()
+        // New: UID == nickname handle (3..20, a-z0-9_.-). Also allow legacy 7-digit ids.
+        val isLegacyNumeric = normalized.length == 7 && normalized.all { it.isDigit() }
+        val isHandle = normalized.length in 3..20 && normalized.all { it.isLetterOrDigit() || it == '_' || it == '.' || it == '-' }
+        if (!isLegacyNumeric && !isHandle) return
         context.friendsStore.edit { prefs ->
             val set = (prefs[kFriends] ?: emptySet()).toMutableSet()
             set.add(normalized)
