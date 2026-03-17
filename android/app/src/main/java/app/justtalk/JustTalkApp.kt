@@ -1,11 +1,5 @@
 package app.justtalk
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import app.justtalk.core.directory.DirectoryEvent
 import app.justtalk.core.directory.DirectorySession
 import app.justtalk.data.ProfileStore
+import app.justtalk.ui.theme.JustTalkTheme
 import app.justtalk.ui.screens.AuthScreen
 import app.justtalk.ui.screens.CallScreen
 import app.justtalk.ui.screens.HomeScreen
@@ -28,21 +23,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.runBlocking
 
-private val LightColors = lightColorScheme()
-private val DarkColors = darkColorScheme()
-
 @Composable
 fun JustTalkApp(initialRoomId: String?) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
-    val colorScheme =
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            if (dark) DarkColors else LightColors
-        }
-
-    MaterialTheme(colorScheme = colorScheme) {
+    JustTalkTheme {
         val store = remember { ProfileStore(context) }
         val hasUid = remember { runBlocking { !store.uid.first().isNullOrBlank() } }
         val session = remember { DirectorySession(context.applicationContext) }
