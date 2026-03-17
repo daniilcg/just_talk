@@ -75,7 +75,7 @@ class DirectorySession(
                     _events.tryEmit(ev)
                     if (ev == DirectoryEvent.Closed) throw RuntimeException("closed")
                 }
-            } catch {
+            } catch (e: Exception) {
                 close()
                 status = "Переподключение…"
                 delay(800)
@@ -89,8 +89,10 @@ class DirectorySession(
     }
 
     fun inviteUid(toUid: String, roomId: String) {
-        val fromPeer = runCatching { store.ensurePeerId() }.getOrNull()
-        if (fromPeer != null) client?.inviteUid(fromPeerId = fromPeer, toUid = toUid, roomId = roomId)
+        scope.launch {
+            val fromPeer = store.ensurePeerId()
+            client?.inviteUid(fromPeerId = fromPeer, toUid = toUid, roomId = roomId)
+        }
     }
 
     fun sendMsg(toUid: String, text: String) {

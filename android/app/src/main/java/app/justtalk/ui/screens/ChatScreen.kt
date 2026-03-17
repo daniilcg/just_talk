@@ -37,6 +37,7 @@ import app.justtalk.data.ChatFileStore
 import app.justtalk.data.ChatLine
 import app.justtalk.data.ProfileStore
 import app.justtalk.data.SecurePasswordStore
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID

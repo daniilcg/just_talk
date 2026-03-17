@@ -277,7 +277,7 @@ fun HomeScreen(
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(
-                                    onClick = { scope.launch { directory?.lookupUid(f) } }
+                                    onClick = { session?.lookupUid(f) }
                                 ) { Text("Пинг") }
                                 Spacer(Modifier.width(8.dp))
                                 OutlinedButton(
@@ -289,25 +289,6 @@ fun HomeScreen(
                 }
             }
         }
-    }
-
-    val invite = incomingInvite
-    if (invite != null) {
-        AlertDialog(
-            onDismissRequest = { incomingInvite = null },
-            title = { Text("Входящий звонок") },
-            text = { Text("Друг приглашает в комнату: ${invite.second}") },
-            confirmButton = {
-                Button(onClick = {
-                    val room = invite.second
-                    incomingInvite = null
-                    onStartCall(room)
-                }) { Text("Принять") }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { incomingInvite = null }) { Text("Отклонить") }
-            }
-        )
     }
 }
 
