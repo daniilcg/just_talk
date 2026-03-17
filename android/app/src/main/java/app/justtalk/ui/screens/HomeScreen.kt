@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +54,8 @@ import java.util.UUID
 @Composable
 fun HomeScreen(
     onStartCall: (roomId: String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenChat: (uid: String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val store = remember { ProfileStore(context) }
@@ -64,7 +68,6 @@ fun HomeScreen(
     var email by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf("") }
     var signalingUrl by remember { mutableStateOf("") }
-    var roomId by remember { mutableStateOf("") } // manual mode fallback
 
     var directory: DirectoryClient? by remember { mutableStateOf(null) }
     var directoryStatus by remember { mutableStateOf("Подключение…") }
@@ -192,155 +195,120 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(20.dp),
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            Text("Ты: $nickname")
-            Spacer(Modifier.height(6.dp))
-            Text("UID: $uid")
-            Spacer(Modifier.height(6.dp))
-            if (email.isNotBlank()) {
-                Text("Email: $email")
-                Spacer(Modifier.height(6.dp))
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Контакты")
+                    Spacer(Modifier.height(4.dp))
+                    Text("Ты: $nickname  •  UID: $uid")
+                }
+                Text(directoryStatus)
             }
-            Text("PeerId: ${peerId.take(8)}…")
-            Spacer(Modifier.height(6.dp))
-            Spacer(Modifier.height(12.dp))
 
-            Text("Статус: $directoryStatus")
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
 
             if (!UrlValidators.isValidSignalingUrl(signalingUrl)) {
-                Text("Сервер не настроен. Открой настройки и вставь ссылку сервера.")
+                Text("Сервер сейчас недоступен. Нажми “Обновить сервер” или открой настройки.")
                 Spacer(Modifier.height(10.dp))
-                Button(onClick = onOpenSettings) { Text("Открыть настройки") }
+                Row {
+                    Button(onClick = { refreshServerNow() }) { Text("Обновить сервер") }
+                    Spacer(Modifier.width(12.dp))
+                    OutlinedButton(onClick = onOpenSettings) { Text("Настройки") }
+                }
                 Spacer(Modifier.height(18.dp))
             }
 
-            Text("Найти друга по UID или никнейму (он должен быть онлайн):")
-            Spacer(Modifier.height(8.dp))
+            // Search
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = friendQuery,
                 onValueChange = { friendQuery = it.trim() },
-                label = { Text("UID (0000001) или никнейм") },
+                label = { Text("Поиск по UID (0000001) или никнейму") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                 singleLine = true
             )
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(
-                    enabled = friendQuery.length >= 3,
+                    enabled = friendQuery.length >= 3 && directory != null,
                     onClick = {
                         lookedUp = true
                         foundUid = null
                         foundOnlinePeerId = null
+                        friendAddedStatus = null
                         val q = friendQuery
                         if (q.length == 7 && q.all { it.isDigit() }) directory?.lookupUid(q)
                         else directory?.lookupNickname(q)
                     }
-                ) { Text("Поиск") }
+                ) { Text("Найти") }
                 Spacer(Modifier.width(12.dp))
-                Button(
-                    enabled = friendQuery.length >= 3 && foundUid != null && foundOnlinePeerId != null,
-                    onClick = {
-                        val newRoom = UUID.randomUUID().toString().substring(0, 8)
-                        directory?.inviteUid(fromPeerId = peerId, toUid = foundUid!!, roomId = newRoom)
-                        onStartCall(newRoom)
-                    }
-                ) { Text("Позвонить") }
-            }
-            if (foundUid != null) {
-                Spacer(Modifier.height(8.dp))
-                val online = foundOnlinePeerId != null
-                Text("Найден UID: $foundUid" + if (online) " (онлайн)" else " (оффлайн)")
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (foundUid != null) {
                     OutlinedButton(
-                        enabled = foundUid != null,
                         onClick = {
                             val u = foundUid ?: return@OutlinedButton
                             scope.launch {
                                 friendsStore.add(u)
-                                friendAddedStatus = "Добавлено: $u"
+                                friendAddedStatus = "Добавлено"
                             }
                         }
-                    ) { Text("Добавить в друзья") }
-                    if (friendAddedStatus != null) {
-                        Spacer(Modifier.width(12.dp))
-                        Text(friendAddedStatus!!)
-                    }
+                    ) { Text("Добавить") }
                 }
-            } else if (lookedUp) {
+            }
+            if (lookedUp) {
                 Spacer(Modifier.height(8.dp))
-                Text("Не найден (или оффлайн).")
-            } else {
-                Spacer(Modifier.height(8.dp))
-                Text("Нажми “Поиск”.")
+                when {
+                    foundUid != null -> {
+                        val online = foundOnlinePeerId != null
+                        Text("Найден: $foundUid" + if (online) " (онлайн)" else " (оффлайн)")
+                        if (friendAddedStatus != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(friendAddedStatus!!)
+                        }
+                    }
+                    else -> Text("Не найдено.")
+                }
             }
 
-            Spacer(Modifier.height(26.dp))
-            Text("Друзья:")
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(18.dp))
+
+            // Contacts list
             if (friends.isEmpty()) {
-                Text("Пока пусто. Добавь друга по UID.")
+                Text("Контактов пока нет. Найди друга и нажми “Добавить”.")
             } else {
-                Column {
-                    for (f in friends.take(8)) {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    items(friends) { f ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpenChat(f) }
+                                .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("UID: $f")
-                            Row {
+                            Column {
+                                Text("UID: $f")
+                                Spacer(Modifier.height(2.dp))
+                                Text("Нажми чтобы открыть чат")
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedButton(
-                                    onClick = {
-                                        scope.launch { directory?.lookupUid(f) }
-                                    }
-                                ) { Text("Статус") }
-                                Spacer(Modifier.width(8.dp))
-                                Button(
-                                    onClick = {
-                                        val newRoom = UUID.randomUUID().toString().substring(0, 8)
-                                        directory?.inviteUid(fromPeerId = peerId, toUid = f, roomId = newRoom)
-                                        onStartCall(newRoom)
-                                    }
-                                ) { Text("Звонок") }
+                                    onClick = { scope.launch { directory?.lookupUid(f) } }
+                                ) { Text("Пинг") }
                                 Spacer(Modifier.width(8.dp))
                                 OutlinedButton(
                                     onClick = { scope.launch { friendsStore.remove(f) } }
                                 ) { Text("Удалить") }
                             }
                         }
-                        Spacer(Modifier.height(6.dp))
                     }
                 }
             }
-
-            Spacer(Modifier.height(18.dp))
-            Text("Ручной режим (если надо):")
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = roomId,
-                onValueChange = { roomId = it.trim() },
-                label = { Text("Room ID") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = { roomId = UUID.randomUUID().toString().substring(0, 8) }
-                ) { Text("Сгенерировать") }
-                Spacer(Modifier.width(12.dp))
-                Button(
-                    enabled = roomId.isNotBlank(),
-                    onClick = { onStartCall(roomId) }
-                ) { Text("Позвонить") }
-            }
-            Spacer(Modifier.height(24.dp))
-            Text("Если поиск по никнейму не работает — проверь, что оба телефона онлайн и подключены к одному signaling URL.")
         }
     }
 

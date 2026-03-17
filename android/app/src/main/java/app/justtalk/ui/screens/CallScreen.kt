@@ -1,6 +1,7 @@
 package app.justtalk.ui.screens
 
 import android.Manifest
+import android.media.AudioManager
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,6 +58,7 @@ import org.webrtc.SurfaceViewRenderer
 @Composable
 fun CallScreen(
     roomId: String,
+    isVideo: Boolean = true,
     onHangup: () -> Unit
 ) {
     val context = LocalContext.current
@@ -66,19 +68,25 @@ fun CallScreen(
     var hasPerms by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Подготовка…") }
     var micOn by remember { mutableStateOf(true) }
-    var camOn by remember { mutableStateOf(true) }
+    var camOn by remember { mutableStateOf(isVideo) }
+    var speakerOn by remember { mutableStateOf(false) }
 
     val permsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
-        hasPerms = (result[Manifest.permission.RECORD_AUDIO] == true) && (result[Manifest.permission.CAMERA] == true)
+        val mic = (result[Manifest.permission.RECORD_AUDIO] == true)
+        val cam = if (isVideo) (result[Manifest.permission.CAMERA] == true) else true
+        hasPerms = mic && cam
     }
 
     LaunchedEffect(Unit) {
         val mic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        val cam = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val cam = if (isVideo) ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED else true
         hasPerms = mic && cam
-        if (!hasPerms) permsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA))
+        if (!hasPerms) {
+            val req = if (isVideo) arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA) else arrayOf(Manifest.permission.RECORD_AUDIO)
+            permsLauncher.launch(req)
+        }
     }
 
     if (!hasPerms) {
@@ -87,9 +95,12 @@ fun CallScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Нужны разрешения на микрофон и камеру.")
+            Text(if (isVideo) "Нужны разрешения на микрофон и камеру." else "Нужно разрешение на микрофон.")
             Spacer(Modifier.height(12.dp))
-            Button(onClick = { permsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)) }) {
+            Button(onClick = {
+                val req = if (isVideo) arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA) else arrayOf(Manifest.permission.RECORD_AUDIO)
+                permsLauncher.launch(req)
+            }) {
                 Text("Разрешить")
             }
             Spacer(Modifier.height(12.dp))
@@ -114,6 +125,9 @@ fun CallScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            val am = context.getSystemService(AudioManager::class.java)
+            runCatching { am?.mode = AudioManager.MODE_NORMAL }
+            runCatching { am?.isSpeakerphoneOn = false }
             chat?.stop()
             signaling?.close()
             webrtc?.close()
@@ -156,6 +170,7 @@ fun CallScreen(
                             appContext = context.applicationContext,
                             eglBase = eglBase,
                             iceServers = ice,
+                            videoEnabled = isVideo,
                             onLocalTrack = { track -> localRenderer?.let { track.addSink(it) } },
                             onRemoteTrack = { track -> remoteRenderer?.let { track.addSink(it) } },
                             onIceCandidate = { c -> s.sendSignal(targetPeerId, WebRtcClient.iceToJson(c)) },
@@ -236,19 +251,31 @@ fun CallScreen(
             Text(status)
             Spacer(Modifier.height(12.dp))
 
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(9f / 16f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                factory = {
-                    SurfaceViewRenderer(it).apply {
-                        init(eglBase.eglBaseContext, null)
-                        setMirror(false)
-                        remoteRenderer = this
+            if (isVideo) {
+                AndroidView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(9f / 16f)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    factory = {
+                        SurfaceViewRenderer(it).apply {
+                            init(eglBase.eglBaseContext, null)
+                            setMirror(false)
+                            remoteRenderer = this
+                        }
                     }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Аудио звонок")
                 }
-            )
+            }
 
             Spacer(Modifier.height(12.dp))
 
@@ -257,31 +284,49 @@ fun CallScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AndroidView(
-                    modifier = Modifier.size(120.dp, 160.dp).background(MaterialTheme.colorScheme.surfaceVariant),
-                    factory = {
-                        SurfaceViewRenderer(it).apply {
-                            init(eglBase.eglBaseContext, null)
-                            setMirror(true)
-                            localRenderer = this
+                if (isVideo) {
+                    AndroidView(
+                        modifier = Modifier.size(120.dp, 160.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+                        factory = {
+                            SurfaceViewRenderer(it).apply {
+                                init(eglBase.eglBaseContext, null)
+                                setMirror(true)
+                                localRenderer = this
+                            }
                         }
-                    }
-                )
+                    )
+                } else {
+                    Spacer(Modifier.width(1.dp))
+                }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Row {
                         OutlinedButton(onClick = {
+                            speakerOn = !speakerOn
+                            val am = context.getSystemService(AudioManager::class.java)
+                            runCatching { am?.mode = AudioManager.MODE_IN_COMMUNICATION }
+                            runCatching { am?.isSpeakerphoneOn = speakerOn }
+                        }) { Text(if (speakerOn) "Speaker" else "Earpiece") }
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = {
                             micOn = !micOn
                             webrtc?.toggleMic(micOn)
                         }) { Text(if (micOn) "Mic ON" else "Mic OFF") }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = {
-                            camOn = !camOn
-                            webrtc?.toggleCamera(camOn)
-                        }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
+                        if (isVideo) {
+                            Spacer(Modifier.width(8.dp))
+                            OutlinedButton(onClick = {
+                                camOn = !camOn
+                                webrtc?.toggleCamera(camOn)
+                            }) { Text(if (camOn) "Cam ON" else "Cam OFF") }
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = onHangup) { Text("Завершить") }
+                    Button(
+                        onClick = onHangup,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) { Text("Положить трубку") }
                 }
             }
 

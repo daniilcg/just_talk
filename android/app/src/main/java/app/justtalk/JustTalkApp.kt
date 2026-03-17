@@ -16,6 +16,7 @@ import app.justtalk.data.ProfileStore
 import app.justtalk.ui.screens.AuthScreen
 import app.justtalk.ui.screens.CallScreen
 import app.justtalk.ui.screens.HomeScreen
+import app.justtalk.ui.screens.ChatScreen
 import app.justtalk.ui.screens.SettingsScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -54,16 +55,29 @@ fun JustTalkApp(initialRoomId: String?) {
                     onStartCall = { roomId ->
                         nav.navigate("call/$roomId")
                     },
-                    onOpenSettings = { nav.navigate("settings") }
+                    onOpenSettings = { nav.navigate("settings") },
+                    onOpenChat = { chatUid -> nav.navigate("chat/$chatUid") }
                 )
             }
             composable("settings") {
                 SettingsScreen(onBack = { nav.popBackStack() })
             }
-            composable("call/{roomId}") { backStackEntry ->
+            composable("chat/{uid}") { backStackEntry ->
+                val chatUid = backStackEntry.arguments?.getString("uid").orEmpty()
+                ChatScreen(
+                    uid = chatUid,
+                    onBack = { nav.popBackStack() },
+                    onStartCall = { roomId, isVideo ->
+                        nav.navigate("call/$roomId?video=${if (isVideo) 1 else 0}")
+                    }
+                )
+            }
+            composable("call/{roomId}?video={video}") { backStackEntry ->
                 val roomId = backStackEntry.arguments?.getString("roomId").orEmpty()
+                val isVideo = backStackEntry.arguments?.getString("video") != "0"
                 CallScreen(
                     roomId = roomId,
+                    isVideo = isVideo,
                     onHangup = { nav.popBackStack() }
                 )
             }

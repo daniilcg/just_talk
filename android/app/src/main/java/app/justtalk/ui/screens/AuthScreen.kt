@@ -53,6 +53,10 @@ fun AuthScreen(
     val secure = remember { SecurePasswordStore(context) }
     val scope = rememberCoroutineScope()
 
+    enum class Mode { Signup, Login }
+
+    var mode by remember { mutableStateOf(Mode.Signup) }
+    var uidInput by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var signalingUrl by remember { mutableStateOf("") }
@@ -104,28 +108,56 @@ fun AuthScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Регистрация: сервер выдаст UID (как UIN)")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    enabled = mode != Mode.Signup,
+                    onClick = { mode = Mode.Signup; error = null }
+                ) { Text("Регистрация") }
+                TextButton(
+                    enabled = mode != Mode.Login,
+                    onClick = { mode = Mode.Login; error = null }
+                ) { Text("Вход") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(if (mode == Mode.Signup) "Регистрация: сервер выдаст UID (как UIN)" else "Вход: введи UID и пароль")
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = nickname,
-                onValueChange = { nickname = it.trim() },
-                label = { Text("Никнейм (min 3)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                singleLine = true,
-                enabled = ready
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email (опционально)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true,
-                enabled = ready
-            )
-            Spacer(Modifier.height(12.dp))
+            if (mode == Mode.Login) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = uidInput,
+                    onValueChange = { uidInput = it.trim() },
+                    label = { Text("UID (например 0000001)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    enabled = ready
+                )
+                Spacer(Modifier.height(12.dp))
+            } else {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = nickname,
+                    onValueChange = { nickname = it.trim() },
+                    label = { Text("Никнейм (min 3)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                    singleLine = true,
+                    enabled = ready
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email (опционально)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    singleLine = true,
+                    enabled = ready
+                )
+                Spacer(Modifier.height(12.dp))
+            }
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = password,
@@ -165,22 +197,41 @@ fun AuthScreen(
             }
             Spacer(Modifier.height(20.dp))
             Button(
-                enabled = ready && nickname.length >= 3 && password.length >= 6 && configured,
+                enabled = ready &&
+                    password.length >= 6 &&
+                    configured &&
+                    (if (mode == Mode.Signup) nickname.length >= 3 else (uidInput.length == 7 && uidInput.all { it.isDigit() })),
                 onClick = {
                     scope.launch {
                         store.setSignalingUrl(signalingUrl)
                         val peerId = store.ensurePeerId()
 
                         val client = DirectoryClient(signalingUrl).also { it.connect() }
-                        client.signup(nickname = nickname, email = email.ifBlank { null }, peerId = peerId, password = password)
+                        if (mode == Mode.Signup) {
+                            client.signup(nickname = nickname, email = email.ifBlank { null }, peerId = peerId, password = password)
+                        } else {
+                            client.login(uid = uidInput, password = password, peerId = peerId)
+                        }
 
                         val ev = withTimeoutOrNull(8000) {
-                            client.events.first { it is DirectoryEvent.SignupOk || it is DirectoryEvent.Error }
+                            client.events.first {
+                                it is DirectoryEvent.SignupOk ||
+                                    it is DirectoryEvent.LoginOk ||
+                                    it is DirectoryEvent.Error
+                            }
                         }
                         client.close()
 
                         when (ev) {
                             is DirectoryEvent.SignupOk -> {
+                                store.setUid(ev.uid)
+                                store.setNickname(ev.nickname)
+                                if (!ev.email.isNullOrBlank()) store.setEmail(ev.email)
+                                secure.setPassword(password)
+                                error = null
+                                onDone()
+                            }
+                            is DirectoryEvent.LoginOk -> {
                                 store.setUid(ev.uid)
                                 store.setNickname(ev.nickname)
                                 if (!ev.email.isNullOrBlank()) store.setEmail(ev.email)
@@ -202,7 +253,7 @@ fun AuthScreen(
                     }
                 }
             ) {
-                Text("Зарегистрироваться")
+                Text(if (mode == Mode.Signup) "Зарегистрироваться" else "Войти")
             }
         }
     }

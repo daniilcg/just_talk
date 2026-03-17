@@ -28,6 +28,7 @@ class WebRtcClient(
     private val appContext: Context,
     private val eglBase: EglBase,
     private val iceServers: List<PeerConnection.IceServer>,
+    private val videoEnabled: Boolean = true,
     private val onLocalTrack: (VideoTrack) -> Unit,
     private val onRemoteTrack: (VideoTrack) -> Unit,
     private val onIceCandidate: (IceCandidate) -> Unit,
@@ -105,24 +106,26 @@ class WebRtcClient(
     }
 
     private fun startLocalMedia() {
-        videoSource = factory.createVideoSource(false)
         audioSource = factory.createAudioSource(MediaConstraints())
 
-        val videoTrack = factory.createVideoTrack("localVideo", videoSource)
         val audioTrack = factory.createAudioTrack("localAudio", audioSource)
-        localVideoTrack = videoTrack
         localAudioTrack = audioTrack
 
-        onLocalTrack(videoTrack)
-
         val streamId = "stream0"
-        peerConnection.addTrack(videoTrack, listOf(streamId))
         peerConnection.addTrack(audioTrack, listOf(streamId))
 
-        capturer = createCameraCapturer(appContext)
-        val textureHelper = SurfaceTextureHelper.create("CameraThread", eglBase.eglBaseContext)
-        (capturer as? CameraVideoCapturer)?.initialize(textureHelper, appContext, videoSource?.capturerObserver)
-        capturer?.startCapture(720, 1280, 30)
+        if (videoEnabled) {
+            videoSource = factory.createVideoSource(false)
+            val videoTrack = factory.createVideoTrack("localVideo", videoSource)
+            localVideoTrack = videoTrack
+            onLocalTrack(videoTrack)
+            peerConnection.addTrack(videoTrack, listOf(streamId))
+
+            capturer = createCameraCapturer(appContext)
+            val textureHelper = SurfaceTextureHelper.create("CameraThread", eglBase.eglBaseContext)
+            (capturer as? CameraVideoCapturer)?.initialize(textureHelper, appContext, videoSource?.capturerObserver)
+            capturer?.startCapture(720, 1280, 30)
+        }
     }
 
     private fun createOrAttachDataChannel() {
@@ -144,7 +147,7 @@ class WebRtcClient(
     fun createOffer(onSdp: (SessionDescription) -> Unit) {
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (videoEnabled) "true" else "false"))
         }
         peerConnection.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
@@ -157,7 +160,7 @@ class WebRtcClient(
     fun createAnswer(onSdp: (SessionDescription) -> Unit) {
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (videoEnabled) "true" else "false"))
         }
         peerConnection.createAnswer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
